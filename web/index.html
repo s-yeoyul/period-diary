@@ -19,11 +19,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system
 .wrap{max-width:480px;margin:0 auto}
 button{font:inherit;color:inherit;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
 input[type=text]{font:inherit;font-size:16px;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
-.tabs{display:flex;gap:0;margin:16px 0}
-.tabs button{flex:1;border-radius:0}
-.tabs button:first-child{border-radius:8px 0 0 8px}
-.tabs button:last-child{border-radius:0 8px 8px 0;border-left:0}
-.tabs button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+#view{padding-top:20px}
 .status{font-size:20px;font-weight:700;margin:0}
 .sub{color:var(--sub);font-size:14px;margin:4px 0 0}
 .head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px}
@@ -56,10 +52,6 @@ dialog .row button{flex:1}
 </head>
 <body>
 <div class="wrap">
-  <div class="tabs">
-    <button data-view="me">내 캘린더</button>
-    <button data-view="partner">파트너</button>
-  </div>
   <div id="view"></div>
 </div>
 
@@ -111,6 +103,8 @@ function load() {
   } catch { return base; }
 }
 let data = load(), engine, partnerEngine;
+// 이 기기의 사용 방식: "me" = 내 캘린더, "partner" = 공유받은 캘린더만 보기
+if (!data.mode) data.mode = data.partnerLink ? "partner" : (Object.keys(data.logs).length || data.myShare ? "me" : null);
 
 function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
 function rebuild() {
@@ -450,22 +444,7 @@ function meView() {
     <button class="danger" data-action="share-stop">공유 중지</button>`;
   return statusHtml(engine) + calendarHtml("me", engine, data.logs, true)
     + `<section><h2>파트너와 공유</h2>${share}</section>`
-    + (NOTIFY ? `<section><h2>내 예정일 알림</h2>${notifyBody("self")}</section>` : "")
-    + partnerSection();
-}
-
-// 파트너 연결 · 파트너 알림 · 연결 끊기는 내 캘린더 탭 아래에 둠 (파트너 탭은 캘린더만)
-function partnerSection() {
-  if (!Cloud.configured) return "";
-  if (!data.partnerLink) return `<section><h2>파트너 캘린더</h2><p class="sub">파트너가 보낸 공유 링크를 붙여 넣으면 '파트너' 탭에서 볼 수 있어요.</p>
-    <div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div></section>`;
-  const info = sync.gone ? "파트너가 공유를 중지했어요."
-    : sync.error ? sync.error
-    : !data.partner ? "불러오는 중…"
-    : `${sync.live ? "실시간 연결됨" : "오프라인 · 마지막으로 받은 내용"} · ${fmtTime(data.partner.exportedAt)} 업데이트`;
-  return `<section><h2>파트너 캘린더</h2><p class="sub">${info}</p>`
-    + (NOTIFY && data.partner && !sync.gone ? notifyBody("partner") : "")
-    + `<button class="danger" data-action="disconnect">연결 끊기</button></section>`;
+    + (NOTIFY ? `<section><h2>내 예정일 알림</h2>${notifyBody("self")}</section>` : "");
 }
 
 function notifyBody(role) {
@@ -478,17 +457,27 @@ function notifyBody(role) {
   return `<p class="sub">${desc}</p><div class="row"><button data-action="push-${role}" data-on="${on ? 1 : 0}">${label}</button></div>`;
 }
 
-// 파트너 탭: 캘린더만
+// 처음 여는 화면: 어떻게 쓸지 고르기
+function welcomeView() {
+  return `<p class="status">캘린더</p>
+    <div class="row"><button data-action="mode-me">내 캘린더 쓰기</button></div>
+    <section><h2>파트너 캘린더 보기</h2><p class="sub">받은 공유 링크를 붙여 넣으세요.</p>${linkInput()}</section>`;
+}
+const linkInput = () => `<div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div>`;
+
+// 파트너 화면: 공유받은 캘린더만 (알림은 켜기 전까지만 버튼 하나 표시)
 function partnerView() {
-  if (data.partnerLink && partnerEngine && !sync.gone) return calendarHtml("partner", partnerEngine, data.partner.logs, false);
-  const msg = !Cloud.configured || !data.partnerLink ? "내 캘린더 탭 아래 '파트너 캘린더'에서 공유 링크를 연결하세요."
-    : sync.gone ? "파트너가 공유를 중지했어요." : "불러오는 중…";
-  return `<p class="sub">${msg}</p>`;
+  if (!Cloud.configured) return `<p class="sub">설정이 필요해요.</p>`;
+  if (!data.partnerLink || sync.gone) return `<p class="sub">${sync.gone ? "공유가 중지됐어요. 새 링크를 받았다면 붙여 넣으세요." : "받은 공유 링크를 붙여 넣으세요."}</p>${linkInput()}`;
+  if (!partnerEngine) return `<p class="sub">불러오는 중…</p>`;
+  const nid = data.partner.notifyId;
+  const askPush = NOTIFY && nid && pushReady() && data.pushPartner !== nid;
+  return calendarHtml("partner", partnerEngine, data.partner.logs, false)
+    + (askPush ? `<div class="row" style="margin-top:20px"><button data-action="push-partner" data-on="0">알림 받기</button></div>` : "");
 }
 
 function render() {
-  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
-  $("view").innerHTML = state.view === "me" ? meView() : partnerView();
+  $("view").innerHTML = data.mode === "me" ? meView() : data.mode === "partner" ? partnerView() : welcomeView();
 }
 // 입력 중일 때는 화면을 다시 그리지 않음
 function refresh() { if (!$("day").open && document.activeElement?.id !== "link-in") render(); }
@@ -496,7 +485,6 @@ function refresh() { if (!$("day").open && document.activeElement?.id !== "link-
 /* ---------- 이벤트 ---------- */
 document.addEventListener("click", async e => {
   const el = e.target.closest("button"); if (!el) return;
-  if (el.dataset.view) { state.view = el.dataset.view; render(); return; }
   if (el.dataset.month) { const s = el.dataset.month, m = state.month[s]; state.month[s] = new Date(m.getFullYear(), m.getMonth() + Number(el.dataset.delta), 1); render(); return; }
   if (el.dataset.day) { openDay(el.dataset.day); return; }
   switch (el.dataset.action) {
@@ -528,12 +516,11 @@ document.addEventListener("click", async e => {
     case "connect": {
       const link = parseLink($("link-in").value);
       if (!link) { alert("공유 링크가 아니에요. 링크 전체를 붙여 넣어 주세요."); return; }
-      connectPartner(link); state.view = "partner"; render(); break;
+      data.mode = "partner"; connectPartner(link); render(); break;
     }
-    case "disconnect":
-      if (!confirm("파트너 캘린더 연결을 끊을까요?")) return;
-      if (data.pushPartner) await disablePush("partner");
-      data.partnerLink = null; data.partner = null; persist(); rebuild(); watchPartner(); render(); break;
+    case "mode-me": {
+      data.mode = "me"; persist(); render(); break;
+    }
   }
 });
 
@@ -562,8 +549,9 @@ $("day").addEventListener("click", e => { if (e.target === $("day")) $("day").cl
 function handleHash() {
   const link = parseLink(location.hash); if (!link) return;
   history.replaceState(null, "", location.pathname + location.search);
-  if (data.partnerLink && data.partnerLink.id === link.id) { state.view = "partner"; render(); return; }
-  if (confirm("파트너 캘린더를 연결할까요?")) { connectPartner(link); state.view = "partner"; render(); }
+  if (data.partnerLink && data.partnerLink.id === link.id && data.mode === "partner") return;
+  const msg = data.mode === "me" ? "이 기기를 파트너 캘린더 보기용으로 바꿀까요? 이 기기의 내 기록은 지워지지 않지만 화면에는 안 보여요." : "파트너 캘린더를 연결할까요?";
+  if (confirm(msg)) { data.mode = "partner"; connectPartner(link); render(); }
 }
 window.addEventListener("hashchange", handleHash);
 function catchUp() {
@@ -578,10 +566,9 @@ document.addEventListener("visibilitychange", () => {
   rebuild(); refresh(); catchUp();
 });
 // 알림을 눌러 열었을 때 해당 탭으로
-const tabParam = new URLSearchParams(location.search).get("tab");
-if (tabParam === "partner" || tabParam === "me") { state.view = tabParam; history.replaceState(null, "", location.pathname + location.hash); }
+if (new URLSearchParams(location.search).has("tab")) history.replaceState(null, "", location.pathname + location.hash);
 navigator.serviceWorker?.addEventListener("message", e => {
-  if (e.data && (e.data.tab === "partner" || e.data.tab === "me")) { state.view = e.data.tab; render(); }
+  if (e.data && e.data.tab) { rebuild(); render(); }
 });
 
 rebuild();
