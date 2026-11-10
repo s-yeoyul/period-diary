@@ -1,7 +1,7 @@
 // 오프라인에서도 열리도록 앱 파일을 캐시하고, 푸시 알림을 띄운다.
 // VERSION은 배포할 때 GitHub Actions가 자동으로 바꿔 준다.
 const VERSION = "calendar-v4";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./firebase-config.js", "./notify-config.js", "./holidays.js",
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./firebase-config.js", "./notify-config.js", "./holidays.js", "./img/phase-rage.jpg", "./img/phase-blue.jpg", "./img/phase-small.jpg", "./img/phase-calm.jpg",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 // 글꼴은 버전이 바뀌어도 지우지 않는 별도 보관함에 저장 (한 번 받으면 다음부터 바로 꺼내 씀)
 const FONT_CACHE = "fonts-v1";

@@ -127,6 +127,14 @@ svg{display:block}
 .legend .lb{width:14px;height:4px;border-radius:2px;display:inline-block}
 .legend svg{width:12px;height:12px}
 
+/* 오늘의 쥐 (시기 카드): 달력 아래, 사진 + 옆에 글. 사진 크기 = 그 폰에서 달력(6주 기준)을 그리고 남는 높이 */
+.phase{display:flex;align-items:center;gap:14px;margin:16px 0 0}
+.phase img{flex:none;width:var(--phase-size,128px);height:var(--phase-size,128px);object-fit:cover;border-radius:18px;background:var(--line)}
+.phase .txt{min-width:0}
+.phase h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:26px;line-height:1.15;margin:0}
+.phase .when{color:var(--sub);font-size:13px;margin-top:2px}
+.phase .desc{margin:4px 0 0;font-size:13px;line-height:1.4}
+
 /* 설정 */
 .group{margin-top:34px}
 .group h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:22px;margin:0 0 8px}
@@ -185,8 +193,20 @@ dialog::backdrop{background:rgba(0,0,0,.25)}
    알림 문구는 worker/src/index.js 의 MESSAGES */
 const T = {
   period: "생리", periodOn: "생리 중", periodPlan: "생리 예정", periodMaybe: "예정 범위",
-  fertile: "가임기", ovulation: "배란일", sex: "관계", shave: "제모", anniv: "기념일",
+  fertile: "가임기", ovulation: "배란일", sex: "쥐잡", shave: "털갈이", anniv: "기념일", master: "주인",
   slave: "쥐"             // 파트너(캘린더를 보는 쪽)
+};
+
+/* ---------- 오늘의 쥐: 시기별 사진 · 단계 · 설명 (문구는 여기만 고치면 돼요. 해결책은 TODO) ---------- */
+const PHASES = {
+  rage:  { img: "img/phase-rage.jpg",  title: "광기의 쥐",
+           desc: "생리 예정일 일주일 전. 사소한 일에도 화가 나고 다 뿌셔버리고 싶은 단계예요.", },
+  blue:  { img: "img/phase-blue.jpg",  title: "우울한 쥐",
+           desc: "생리 예정일 3일 전. 기운이 없고 마음이 가라앉는 단계예요.", },
+  small: { img: "img/phase-small.jpg", pos: "50% 15%", title: "아주 작은 쥐",
+           desc: "생리 기간. 몸도 마음도 아주 약해지는 단계예요.", },
+  calm:  { img: "img/phase-calm.jpg",  title: "평온한 쥐",
+           desc: "아주 평온한 단계예요.", }
 };
 
 /* ---------- 설정값 ----------
@@ -736,7 +756,7 @@ async function pushReminders() {
 }
 function notifyError(e) {
   if (e.message === "denied") return "알림이 꺼져 있어요. 아이폰 설정 → 알림 → 캘린더에서 허용해 주세요.";
-  if (e.message === "no-channel") return "마스터 쪽 알림이 아직 준비되지 않았어요.";
+  if (e.message === "no-channel") return `${T.master} 쪽 알림이 아직 준비되지 않았어요.`;
   return "알림을 켜지 못했어요. 인터넷 연결을 확인해 주세요.";
 }
 
@@ -752,6 +772,44 @@ const ICON = {
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg>`,
   heartbg: `<svg class="heartbg" viewBox="0 0 42 42"><path d="M21 37s-14-8.6-17.4-17.2C1.2 13.6 5 7 11.6 7c3.9 0 6.6 2.1 9.4 5.6C23.8 9.1 26.5 7 30.4 7 37 7 40.8 13.6 38.4 19.8 35 28.4 21 37 21 37z"/></svg>`
 };
+
+// 오늘이 어느 시기인지: 생리 중 > 예정일 1~3일 전(예정일이 지났는데 아직 시작 안 했으면 포함) > 4~7일 전 > 그 외
+function phaseOf(e, logs, date = today()) {
+  const k = keyOf(date);
+  if (isRed(logs[k]) || e.inferred.has(k)) {
+    const r = [...e.runs].reverse().find(r => r.start <= date);
+    return { key: "small", when: r ? `${T.period} ${diffDays(r.start, date) + 1}일째` : T.periodOn };
+  }
+  if (!e.runs.length) return { key: "calm", when: "" };
+  const next = e.starts.find(x => x >= date), d = next ? diffDays(date, next) : null;
+  const last = e.runs[e.runs.length - 1], expected = addDays(last.start, Math.round(e.mu));
+  const late = diffDays(expected, date);
+  if (late > 0 && date > last.end) return { key: "blue", when: `${T.periodPlan}일이 ${late}일 지났어요` };
+  if (d === 0) return { key: "blue", when: `오늘이 ${T.periodPlan}일이에요` };
+  if (d >= 1 && d <= 3) return { key: "blue", when: `${T.periodPlan}일 ${d}일 전` };
+  if (d >= 4 && d <= 7) return { key: "rage", when: `${T.periodPlan}일 ${d}일 전` };
+  return { key: "calm", when: d ? `다음 ${T.period}까지 ${d}일` : "" };
+}
+// 사진 크기: 화면 높이 − (6주짜리 달력 끝 위치) − 아래 홈 바 자리. 달을 넘겨도 크기가 안 바뀌게 항상 6주 기준
+let insetProbe = null;
+function sizePhase() {
+  const card = document.querySelector(".phase"), cal = document.querySelector(".cal");
+  if (!card || !cal) return;
+  if (!insetProbe) { insetProbe = document.createElement("div"); insetProbe.style.cssText = "position:fixed;visibility:hidden;height:env(safe-area-inset-bottom)"; document.body.appendChild(insetProbe); }
+  const cur = cal.querySelector(".panel.cur"), dayH = (cur.querySelector(".day") || {}).offsetHeight || 68;
+  const extraRows = 6 - Math.round(cur.offsetHeight / dayH);
+  const calBottom = cal.getBoundingClientRect().bottom + window.scrollY + extraRows * dayH;
+  const avail = window.innerHeight - calBottom - 16 - insetProbe.offsetHeight - 10;
+  document.documentElement.style.setProperty("--phase-size", Math.max(96, Math.min(200, Math.floor(avail))) + "px");
+}
+window.addEventListener("resize", () => sizePhase());
+
+function phaseCard(e, logs) {
+  const ph = phaseOf(e, logs), P = PHASES[ph.key];
+  return `<div class="phase"><img src="${P.img}" alt="${esc(P.title)}"${P.pos ? ` style="object-position:${P.pos}"` : ""}>
+    <div class="txt"><h2>${esc(P.title)}</h2>${ph.when ? `<div class="when">${esc(ph.when)}</div>` : ""}
+    <p class="desc">${esc(P.desc)}</p></div></div>`;
+}
 
 function monthCells(m, e, logs, show, editable) {
   const y = m.getFullYear(), mo = m.getMonth(), t = today();
@@ -813,13 +871,13 @@ function gateView() {
 }
 
 function masterView() {
-  return calendarHtml("me", engine, data.logs, SHOW_ALL, true) + slaveGroup() + showGroup() + notifyGroup() + deviceGroup();
+  return calendarHtml("me", engine, data.logs, SHOW_ALL, true) + phaseCard(engine, data.logs) + showGroup() + slaveGroup() + notifyGroup() + deviceGroup();
 }
 
 function deviceGroup() {
   if (!Cloud.configured) return "";
-  const status = vaultSync.error || (!data.vault ? "백업 준비 중…" : vaultSync.ok ? `자동 백업 중 · 마스터 기기 ${vaultSync.devices || 1}대` : "연결 중…");
-  return `<div class="group"><h2>마스터 기기 · 백업</h2>
+  const status = vaultSync.error || (!data.vault ? "백업 준비 중…" : vaultSync.ok ? `자동 백업 중 · ${T.master} 기기 ${vaultSync.devices || 1}대` : "연결 중…");
+  return `<div class="group"><h2>${T.master} 기기 · 백업</h2>
     <div class="row"><span class="t">기기 추가 링크<small>${esc(status)}</small></span><button class="btn" data-action="device-link" ${state.busy ? "disabled" : ""}>만들기</button></div>
     ${state.deviceLink ? `<div class="stack"><input class="field" id="device-url" readonly value="${esc(state.deviceLink)}"><button class="btn" data-action="device-copy">복사</button></div>` : ""}
     <p class="note">다른 폰이나 컴퓨터의 첫 화면에 이 링크를 붙여 넣으면 같은 캘린더를 함께 써요. 링크는 한 번 쓰면 사라지고, 새로 만들면 이전 링크는 무효가 돼요. 기기를 잃어버릴 때를 대비해 하나 만들어 메모에 저장해 두면 복구용으로 쓸 수 있어요.</p></div>`;
@@ -856,7 +914,7 @@ function slaveView() {
   if (!partnerEngine) return `<p class="center note">불러오는 중…</p>`;
   const nid = data.partner.notifyId;
   const askPush = NOTIFY && nid && pushReady() && data.pushPartner !== nid;
-  return calendarHtml("partner", partnerEngine, data.partner.logs, data.partner.show || SHOW_ALL, false)
+  return calendarHtml("partner", partnerEngine, data.partner.logs, data.partner.show || SHOW_ALL, false) + phaseCard(partnerEngine, data.partner.logs)
     + (askPush ? `<div class="center"><button class="link" data-action="push-partner">알림 받기</button></div>` : "");
 }
 
@@ -864,6 +922,7 @@ function render() {
   try {
     $("view").innerHTML = state.join || state.forceGate || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
     document.querySelectorAll(".pager").forEach(p => { p.style.height = p.querySelector(".panel.cur").offsetHeight + "px"; });
+    sizePhase();
   } catch (err) {
     console.error(err);
     $("view").innerHTML = `<p class="center note">화면을 그리지 못했어요. 새로고침해 주세요.</p>`;
@@ -887,7 +946,7 @@ document.addEventListener("click", async e => {
       if (dev) {
         el.disabled = true; el.textContent = "연결 중…";
         try { await joinDevice(dev); state.forceGate = false; state.gateError = ""; if (FORCE_GATE) history.replaceState(null, "", location.pathname); }
-        catch (err) { state.gateError = { gone: "없는 링크예요.", denied: "이미 쓴 링크예요. 마스터 기기에서 새로 만들어 주세요.", key: "링크가 잘못됐어요." }[err.message] || "연결하지 못했어요. 인터넷을 확인해 주세요."; }
+        catch (err) { state.gateError = { gone: "없는 링크예요.", denied: `이미 쓴 링크예요. ${T.master} 기기에서 새로 만들어 주세요.`, key: "링크가 잘못됐어요." }[err.message] || "연결하지 못했어요. 인터넷을 확인해 주세요."; }
         render(); return;
       }
       if (join) { state.join = join; state.gateError = ""; render(); return; }
@@ -1037,8 +1096,8 @@ function handleHash() {
   if (dev) {
     history.replaceState(null, "", location.pathname + location.search);
     if (data.mode === "me" && data.vault && data.vault.id === dev.id) return;
-    if (!confirm("이 기기를 마스터 기기로 추가할까요? 이 기기에 있던 기록은 합쳐져요.")) return;
-    joinDevice(dev).then(render, err => alert(err.message === "denied" ? "이미 쓴 링크예요. 마스터 기기에서 새로 만들어 주세요." : "연결하지 못했어요."));
+    if (!confirm(`이 기기를 ${T.master} 기기로 추가할까요? 이 기기에 있던 기록은 합쳐져요.`)) return;
+    joinDevice(dev).then(render, err => alert(err.message === "denied" ? `이미 쓴 링크예요. ${T.master} 기기에서 새로 만들어 주세요.` : "연결하지 못했어요."));
     return;
   }
   const join = parseJoin(location.hash); if (!join) return;
@@ -1046,8 +1105,8 @@ function handleHash() {
   if (data.mode === "partner" && data.partnerLink && data.partnerLink.id === join.id) return;
   if (data.mode === "me" && !PROFILE) {
     // 마스터 기기가 실수로 슬레이브가 되지 않게
-    if (data.myShare && data.myShare.id === join.id) { alert(`마스터 기기에서 연 내 초대 링크예요. ${T.slave} 폰에서 열어 주세요.`); return; }
-    if (!confirm(`이 기기를 ${T.slave} 화면으로 바꿀까요? 이 기기의 마스터 기록은 지워지지 않아요.`)) return;
+    if (data.myShare && data.myShare.id === join.id) { alert(`${T.master} 기기에서 연 내 초대 링크예요. ${T.slave} 폰에서 열어 주세요.`); return; }
+    if (!confirm(`이 기기를 ${T.slave} 화면으로 바꿀까요? 이 기기의 ${T.master} 기록은 지워지지 않아요.`)) return;
   }
   state.join = join; state.gateError = ""; render();
 }
