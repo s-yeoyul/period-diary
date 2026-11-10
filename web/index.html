@@ -807,7 +807,7 @@ window.addEventListener("resize", () => sizePhase());
 function phaseCard(e, logs) {
   const ph = phaseOf(e, logs), P = PHASES[ph.key];
   return `<div class="phase"><img src="${P.img}" alt="${esc(P.title)}"${P.pos ? ` style="object-position:${P.pos}"` : ""}>
-    <div class="txt"><h2>${esc(P.title)}</h2>${ph.when ? `<div class="when">${esc(ph.when)}</div>` : ""}
+    <div class="txt"><h2>${esc(P.title)}</h2>
     <p class="desc">${esc(P.desc)}</p></div></div>`;
 }
 
