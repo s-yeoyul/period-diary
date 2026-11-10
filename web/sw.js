@@ -1,7 +1,7 @@
 // 오프라인에서도 열리도록 앱 파일을 캐시하고, 푸시 알림을 띄운다.
 // VERSION은 배포할 때 GitHub Actions가 자동으로 바꿔 준다.
 const VERSION = "calendar-v4";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./firebase-config.js", "./notify-config.js",
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./firebase-config.js", "./notify-config.js", "./holidays.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

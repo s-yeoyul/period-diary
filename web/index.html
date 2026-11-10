@@ -6,137 +6,151 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="캘린더">
+<meta name="theme-color" content="#FCFCFC">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>캘린더</title>
-<meta name="theme-color" content="#F7F5F2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141312" media="(prefers-color-scheme: dark)">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
+/* 폰트: 제목 WatermelonYang, 내용 히피체 (눈누) */
+@font-face{font-family:'WatermelonYang';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2') format('woff2');font-weight:normal;font-display:swap}
+@font-face{font-family:'Hippie';src:url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2') format('woff2');font-weight:400;font-display:swap}
+
+/* 색 */
 :root{
-  --bg:#F7F5F2; --surface:#FFFFFF; --ink:#1F1D1B; --ink2:#6F6A64; --ink3:#A9A39C; --line:#ECE8E2;
-  --period:#D94A5B; --period-soft:#F9E3E6; --fertile-soft:#E3EEE7; --ovul:#3E8A68;
+  --bg:#FCFCFC;
+  --ink:#222222;       /* 기본 글자 (임시) */
+  --sub:#8C8C8C;       /* 보조 글자 (임시) */
+  --line:#EEEEEE;      /* 구분선 (임시) */
+  --holiday:#AF5B5B;   /* 일요일 · 공휴일 */
+  --period:#DA5552;    /* 생리 */
+  --plan:#5D576B;      /* 생리 예정일 */
+  --fertile:#FEC0AA;   /* 가임기 */
+  --ovul:#222222;      /* 배란일 체크 (임시, 나중에 쥐 사진) */
+  --sex:#CA7DF9;       /* 관계 하트 */
+  --shave:#B7B5B3;     /* 제모 수풀 */
+  --today:#C2E1C2;     /* 오늘 */
+  --anniv:#E5C1BD;     /* 기념일 하트 */
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#141312; --surface:#1E1C1A; --ink:#F2EFEA; --ink2:#A39D95; --ink3:#6E6962; --line:#2C2926;
-  --period:#E2606F; --period-soft:#3B2328; --fertile-soft:#1E2F26; --ovul:#6DBB93;
-  color-scheme:dark;
-}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
-  font-size:16px;line-height:1.5;letter-spacing:-0.01em;
-  padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 40px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hippie',-apple-system,system-ui,sans-serif;font-size:16px;line-height:1.5;
+  padding:calc(env(safe-area-inset-top) + 24px) 16px calc(env(safe-area-inset-bottom) + 40px)}
 .wrap{max-width:440px;margin:0 auto}
-button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;letter-spacing:inherit}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
 svg{display:block}
 
-/* 상단 요약 */
-.hero{padding:0 4px}
-.hero .label{font-size:15px;font-weight:500;color:var(--ink2)}
-.hero .value{font-size:60px;font-weight:700;letter-spacing:-0.045em;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
-.hero .value small{font-size:24px;font-weight:600;letter-spacing:-0.02em;margin-left:3px}
-.hero .value.text{font-size:36px;letter-spacing:-0.035em;margin-top:6px}
-.hero .note{font-size:14px;color:var(--ink2);margin-top:10px}
-.stats{display:grid;grid-template-columns:1fr 1.25fr 1fr;margin:26px 0 18px;padding:0 4px}
-.stats>div+div{border-left:1px solid var(--line);padding-left:14px}
-.stats .k{font-size:12px;color:var(--ink3)}
-.stats .v{font-size:15px;font-weight:600;margin-top:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.stats .v em{font-style:normal;font-weight:500;color:var(--ink3);font-size:12px;margin-left:3px}
-
 /* 캘린더 */
-.card{background:var(--surface);border-radius:22px;padding:16px 12px 14px}
-.cal-head{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px 10px}
-.cal-head b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
-.nav{display:flex;gap:2px}
-.nav button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink2)}
-.nav button:active{background:var(--line)}
-.nav svg{width:18px;height:18px}
+.cal{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.cal-head{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
+.cal-head b{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:40px;line-height:1;min-width:3.2em;text-align:center}
+.cal-head button{width:36px;height:36px;display:grid;place-items:center;color:var(--ink)}
+.cal-head svg{width:20px;height:20px}
 .grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.wd{font-size:12px;font-weight:500;color:var(--ink3);text-align:center;padding:4px 0 6px}
-.day{height:52px;display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:2px}
-.day .n{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-variant-numeric:tabular-nums}
-.day .i{height:7px;display:flex;gap:3px;align-items:center}
-.day .i svg{width:8px;height:8px;color:var(--period)}
-.day .i .dot{width:4px;height:4px;border-radius:50%;background:var(--ink)}
-.day.today .n{font-weight:700}
-.day.zone .n{background:var(--fertile-soft)}
-.day.ovul .n{background:var(--fertile-soft);box-shadow:inset 0 0 0 1.5px var(--ovul)}
-.day.plan .n{background:var(--period-soft);color:var(--period)}
-.day.period .n{background:var(--period);color:#fff;font-weight:600}
-.day:disabled{cursor:default;color:inherit}
-.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2);margin:6px 6px 0;padding-top:12px;border-top:1px solid var(--line)}
-.legend span{display:inline-flex;align-items:center;gap:6px}
-.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
-.legend svg{width:9px;height:9px;color:var(--period)}
+.wd{text-align:center;font-size:18px;padding:4px 0 8px}
+.wd.sun{color:var(--holiday)}
+.day{position:relative;height:68px;display:flex;flex-direction:column;align-items:center;padding-top:2px}
+.day:disabled{cursor:default}
+.day .n{position:relative;width:42px;height:42px;display:grid;place-items:center;font-size:22px;line-height:1}
+.day .n>span{position:relative}
+.day.hol .n{color:var(--holiday)}
+.day.today .n>span{font-weight:700}
+.day.today:not(.anniv) .n::before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--today)}
+.day .heartbg{position:absolute;inset:0;width:42px;height:42px}
+.day .heartbg path{fill:var(--anniv)}
+.day.today .heartbg path{stroke:var(--today);stroke-width:2.6}
+.bars{display:flex;flex-direction:column;gap:2px;width:26px;margin-top:2px}
+.bar{height:4px;border-radius:2px}
+.bar.period{background:var(--period)}
+.bar.plan{background:var(--plan)}
+.bar.maybe{background:var(--plan);height:2px;opacity:.45}
+.bar.fertile{background:var(--fertile)}
+.icons{display:flex;gap:2px;margin-top:3px;height:12px}
+.icons svg{width:12px;height:12px}
+.ic-sex{color:var(--sex)} .ic-shave{color:var(--shave)} .ic-ovul{color:var(--ovul)}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:13px;color:var(--sub);margin-top:14px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .lb{width:14px;height:4px;border-radius:2px;display:inline-block}
+.legend svg{width:12px;height:12px}
 
-/* 설정 목록 */
-.group{margin-top:28px}
-.group h2{font-size:13px;font-weight:600;color:var(--ink2);margin:0 0 8px 8px}
-.list{background:var(--surface);border-radius:18px;padding:0 16px}
-.item{display:flex;align-items:center;gap:12px;padding:12px 0;min-height:62px}
-.item+.item{border-top:1px solid var(--line)}
-.item .t{flex:1;min-width:0}
-.item .t b{display:block;font-size:15px;font-weight:600}
-.item .t span{display:block;font-size:13px;color:var(--ink2);margin-top:1px}
-.pill{height:34px;padding:0 15px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap}
-.textbtn{font-size:14px;font-weight:600;color:var(--period);white-space:nowrap;padding:8px 0}
-.switch{appearance:none;-webkit-appearance:none;width:50px;height:30px;border-radius:999px;background:var(--line);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
-.switch:checked{background:var(--period)}
+/* 설정 */
+.group{margin-top:34px}
+.group h2{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:22px;margin:0 0 8px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.row:last-child{border-bottom:1px solid var(--line)}
+.row .t{flex:1;min-width:0}
+.row .t small{display:block;color:var(--sub);font-size:13px}
+.field{display:block;width:100%;height:44px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 12px;font-size:16px}
+.btn{height:44px;padding:0 18px;border-radius:12px;background:var(--ink);color:var(--bg);white-space:nowrap}
+.link{color:var(--holiday);padding:6px 0;white-space:nowrap}
+.stack{display:grid;gap:8px;margin-top:8px}
+.note{color:var(--sub);font-size:13px;margin:6px 0 0}
+.switch{appearance:none;-webkit-appearance:none;width:48px;height:28px;border-radius:999px;background:var(--line);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.switch:checked{background:var(--ink)}
 .switch:checked::after{transform:translateX(20px)}
-.switch:disabled{opacity:.5}
 
-/* 입력 */
-.field{display:flex;gap:8px;margin-top:12px}
-.field input{flex:1;min-width:0;height:46px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px;padding:0 14px}
-.field input::placeholder{color:var(--ink3)}
-.field .pill{height:46px;padding:0 18px}
-
-/* 처음 화면 · 안내 */
-.welcome{padding-top:14vh}
-.welcome h1{font-size:32px;font-weight:700;letter-spacing:-0.035em;margin:0}
-.welcome p{color:var(--ink2);margin:6px 0 32px}
-.welcome .start{height:52px;width:100%;font-size:16px}
-.or{display:flex;align-items:center;gap:12px;color:var(--ink3);font-size:13px;margin:32px 0 2px}
-.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.msg{color:var(--ink2);font-size:14px;padding:8px 4px}
-.center{text-align:center;margin-top:18px}
+/* 첫 화면 */
+.gate{padding-top:16vh;text-align:center}
+.gate h1{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:44px;margin:0 0 8px}
+.gate p{color:var(--sub);margin:0 0 24px}
+.gate .stack{max-width:300px;margin:0 auto}
+.err{color:var(--holiday);font-size:14px;min-height:21px;margin-top:8px}
+.center{text-align:center;margin-top:16px}
 
 /* 날짜 기록 시트 */
-dialog{border:0;margin:auto auto 0;width:100%;max-width:480px;background:var(--bg);color:var(--ink);
-  border-radius:24px 24px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom) + 24px)}
-dialog[open]{animation:up .22s cubic-bezier(.2,.8,.2,1)}
+dialog{border:0;margin:auto auto 0;width:100%;max-width:480px;background:var(--bg);color:var(--ink);border-radius:22px 22px 0 0;
+  padding:16px 20px calc(env(safe-area-inset-bottom) + 24px)}
+dialog[open]{animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(40px)}to{transform:none}}
-dialog::backdrop{background:rgba(20,18,16,.32)}
-.grab{width:36px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
-.sheet-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 14px}
-.sheet-head b{font-size:20px;font-weight:700;letter-spacing:-0.02em}
-.sheet-head button{font-size:15px;font-weight:600;color:var(--period);padding:6px 0}
+dialog::backdrop{background:rgba(0,0,0,.25)}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.sheet-head b{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:26px}
+.sheet-head small{display:block;color:var(--sub);font-size:14px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div id="view"></div>
-</div>
+<div class="wrap"><div id="view"></div></div>
 
 <dialog id="day">
-  <div class="grab"></div>
-  <div class="sheet-head"><b id="day-title"></b><button id="day-close">완료</button></div>
-  <div class="list">
-    <label class="item"><span class="t"><b id="lbl-period"></b></span><input type="checkbox" class="switch" id="chk-red"></label>
-    <label class="item"><span class="t"><b id="lbl-sex"></b></span><input type="checkbox" class="switch" id="chk-heart"></label>
-  </div>
+  <div class="sheet-head"><div><b id="day-title"></b><small id="day-sub"></small></div><button id="day-close" class="link">완료</button></div>
+  <label class="row"><span class="t" id="lbl-period"></span><input type="checkbox" class="switch" id="chk-red"></label>
+  <label class="row"><span class="t" id="lbl-sex"></span><input type="checkbox" class="switch" id="chk-heart"></label>
+  <label class="row"><span class="t" id="lbl-shave"></span><input type="checkbox" class="switch" id="chk-shave"></label>
 </dialog>
 
 <script src="firebase-config.js"></script>
 <script src="notify-config.js"></script>
+<script src="holidays.js"></script>
 <script>
 "use strict";
+/* ---------- 화면에 나오는 말 (둘만의 용어로 바꿀 땐 여기만) ----------
+   알림 문구는 worker/src/index.js 의 MESSAGES */
+const T = {
+  period: "생리", periodOn: "생리 중", periodPlan: "생리 예정", periodMaybe: "예정 범위",
+  fertile: "가임기", ovulation: "배란일", sex: "관계", shave: "제모", anniv: "기념일"
+};
+
+/* ---------- 설정값 ----------
+   MASTER_HASH: 마스터 암호를 되돌릴 수 없게 바꾼 값 (암호 원문은 코드에 없음). 암호를 바꾸려면 이 값을 새로 계산해서 교체
+   DAY_ONE: 사귄 날 (1일)
+   MODEL: 주기 예측 하이퍼파라미터. 개인 정보(나이·키·몸무게)는 저장소에 두지 않고, 그걸 반영한 값만 둠 */
+const MASTER_HASH = "1ad87b9bb25a6a7dc968d84eda86d50e0282c0ef63a3a804643e38ca1cc01699";
+const DAY_ONE = new Date(2023, 8, 2);
+const MODEL = {
+  priorMean: 30,      // 기록이 적을 때 쓰는 주기 평균(일). 20대 중반·저체중 경향을 반영해 인구 평균(29.3)보다 약간 길게
+  priorStrength: 2,   // 위 값을 "몇 주기 분량"만큼 믿을지. 기록이 쌓일수록 개인 값이 우선
+  priorSd: 3,         // 주기마다 흔들리는 정도(표준편차, 일) 사전값
+  sdStrength: 3,
+  halfLife: 6,        // 최근 주기 비중: 6주기 전 기록은 비중 절반
+  skipRatio: 1.6,     // 평소의 1.6배를 넘는 간격은 기록을 빠뜨린 달로 보고 제외
+  luteal: 12.4,       // 배란 → 다음 생리까지(일). Bull et al. 2019 평균. 배란테스트로 개인 값을 알면 교체
+  periodLen: 5,       // 기록이 적을 때 쓰는 생리 기간(일)
+  rangeZ: 1.2816      // 예측 범위: 80% 구간
+};
+
 /* ---------- 날짜 ---------- */
 const pad = n => String(n).padStart(2, "0");
 const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -145,37 +159,67 @@ const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.g
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const diffDays = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
 const WD = ["일", "월", "화", "수", "목", "금", "토"];
-const md = d => `${d.getMonth() + 1}월 ${d.getDate()}일`;
-const short = d => `${d.getMonth() + 1}/${d.getDate()}`;
-const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+const sum = a => a.reduce((x, y) => x + y, 0);
+const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const isoNow = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-const fmtTime = iso => { const d = new Date(iso); return isNaN(d) ? "" : `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const isHoliday = d => d.getDay() === 0 || !!(window.HOLIDAYS && window.HOLIDAYS.has(keyOf(d)));
+
+// 기념일: 1일 = DAY_ONE. 100일 단위 + 매년 같은 날(n주년)
+function annivOf(d) {
+  const n = diffDays(DAY_ONE, d) + 1;
+  if (n <= 1) return null;
+  const years = d.getFullYear() - DAY_ONE.getFullYear();
+  if (years > 0 && d.getMonth() === DAY_ONE.getMonth() && d.getDate() === DAY_ONE.getDate()) return `${years}주년`;
+  if (n % 100 === 0) return `${n}일`;
+  return null;
+}
 
 /* ---------- 저장 (이 기기 안) ---------- */
-const STORAGE_KEY = "calendar-v1";
-const DEFAULT_GAP = 28, DEFAULT_LEN = 5;
+// ?profile=slave : 디버깅용. 같은 브라우저에서 슬레이브 화면을 따로 띄움 (저장 공간 분리)
+const PROFILE = new URLSearchParams(location.search).get("profile") === "slave" ? "slave" : null;
+const MASTER_KEY = "calendar-v1";
+const STORAGE_KEY = PROFILE ? "calendar-v1:slave" : MASTER_KEY;
+const SHOW_ALL = { period: true, plan: true, fertile: true, ovul: true, sex: true, shave: true, anniv: true };
 const isRed = l => !!(l && l.r);
 
 function cleanLogs(raw) {
   const out = {};
   for (const [k, v] of Object.entries(raw && typeof raw === "object" ? raw : {})) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v) continue;
-    const l = { r: v.r === true, h: v.h === true };
-    if (l.r || l.h) out[k] = l;
+    const l = { r: v.r === true, h: v.h === true, s: v.s === true };
+    if (l.r || l.h || l.s) out[k] = l;
   }
   return out;
 }
+function cleanShow(raw) {
+  const out = {};
+  for (const k of Object.keys(SHOW_ALL)) out[k] = !(raw && raw[k] === false);
+  return out;
+}
+let oldShareId = null;
 function load() {
-  // myShare: 내가 올리는 공유 {id, key, fp}, partnerLink: 내가 보는 파트너 공유 {id, key}
-  const base = { logs: {}, partner: null, myShare: null, partnerLink: null };
+  // mode: "me"(마스터) | "partner"(슬레이브) | null(첫 화면)
+  // myShare: 마스터가 올리는 공유 {id, key, salt, question, fp} / partnerLink: 슬레이브가 보는 공유 {id, key}
+  const base = { mode: null, logs: {}, show: { ...SHOW_ALL }, partner: null, myShare: null, partnerLink: null };
   try {
     const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return p ? { ...base, ...p, logs: cleanLogs(p.logs) } : base;
+    if (!p) return base;
+    const d = { ...base, ...p, logs: cleanLogs(p.logs), show: cleanShow(p.show) };
+    // 예전 방식(질문 없는 링크) 공유는 정리
+    if (d.myShare && !d.myShare.salt) { oldShareId = d.myShare.id; d.myShare = null; }
+    return d;
   } catch { return base; }
 }
 let data = load(), engine, partnerEngine;
-// 이 기기의 사용 방식: "me" = 내 캘린더, "partner" = 공유받은 캘린더만 보기
-if (!data.mode) data.mode = data.partnerLink ? "partner" : (Object.keys(data.logs).length || data.myShare ? "me" : null);
+if (PROFILE === "slave") {
+  // 이 브라우저의 마스터가 공유 중이면 그 공유에 자동 연결
+  try {
+    const m = JSON.parse(localStorage.getItem(MASTER_KEY) || "null");
+    if (m && m.myShare && m.myShare.salt && (!data.partnerLink || data.partnerLink.id !== m.myShare.id)) {
+      data.mode = "partner"; data.partnerLink = { id: m.myShare.id, key: m.myShare.key }; data.partner = null;
+    }
+  } catch {}
+}
 
 function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
 function rebuild() {
@@ -184,8 +228,11 @@ function rebuild() {
 }
 function save() { persist(); rebuild(); scheduleSync(); scheduleReminders(); }
 
-/* ---------- 예측 ----------
-   최근 6개 주기 평균으로 다음 생리 예측, 배란일 = 다음 생리 14일 전, 가임기 = 배란일 5일 전 ~ 1일 후 */
+/* ---------- 주기 예측 ----------
+   개인 기록 + 사전값을 섞는 베이지안 방식 (Li et al. 2021, SkipTrack 2025의 아이디어를 한 사람용으로 단순화)
+   - 최근 주기에 더 큰 비중, 기록을 빠뜨린 달은 제외
+   - 다음 생리 = 마지막 시작일 + 개인 평균 주기, 예측 범위 = 80% 구간 (먼 달일수록 넓어짐)
+   - 배란일 = 다음 생리 − 황체기(12.4일, Bull et al. 2019), 가임기 = 배란일 5일 전 ~ 1일 후 */
 function makeEngine(logs, now = today()) {
   const dates = Object.keys(logs).filter(k => isRed(logs[k])).sort().map(dateOf);
   const runs = [];
@@ -193,50 +240,47 @@ function makeEngine(logs, now = today()) {
     const last = runs[runs.length - 1];
     if (last && diffDays(last.end, d) <= 2) last.end = d; else runs.push({ start: d, end: d });
   }
-  const gaps = runs.slice(1).map((r, i) => diffDays(runs[i].start, r.start)).filter(g => g >= 15 && g <= 60).slice(-6);
-  const avgGap = gaps.length ? Math.round(avg(gaps)) : DEFAULT_GAP;
-  const done = runs.filter(r => diffDays(r.end, now) >= 2).slice(-6);
-  const avgLen = Math.min(14, Math.max(1, done.length ? Math.round(avg(done.map(r => diffDays(r.start, r.end) + 1))) : DEFAULT_LEN));
+  let gaps = runs.slice(1).map((r, i) => diffDays(runs[i].start, r.start)).filter(g => g >= 15 && g <= 90);
+  if (gaps.length >= 3) { const m = median(gaps); gaps = gaps.filter(g => g <= m * MODEL.skipRatio); }
 
-  const mids = [], starts = [];
-  runs.slice(1).forEach((r, i) => { const g = diffDays(runs[i].start, r.start); if (g >= 15 && g <= 60) mids.push(addDays(r.start, -14)); });
-  let expected = null;
+  const n = gaps.length, w = gaps.map((_, i) => Math.pow(0.5, (n - 1 - i) / MODEL.halfLife));
+  const W = sum(w), ybar = W ? sum(gaps.map((g, i) => g * w[i])) / W : 0;
+  const k0 = MODEL.priorStrength, nu0 = MODEL.sdStrength, m0 = MODEL.priorMean;
+  const mu = (k0 * m0 + W * ybar) / (k0 + W);
+  const ss = sum(gaps.map((g, i) => w[i] * (g - ybar) ** 2));
+  const s2 = (nu0 * MODEL.priorSd ** 2 + ss + (W ? k0 * W / (k0 + W) * (ybar - m0) ** 2 : 0)) / (nu0 + W);
+  const df = nu0 + W, z = MODEL.rangeZ;
+  const sd = Math.sqrt(s2 * (1 + 1 / (k0 + W)));
+  const q = z + (z ** 3 + z) / (4 * df); // t 분포 분위수 근사
+
+  const done = runs.filter(r => diffDays(r.end, now) >= 2).slice(-6).map(r => diffDays(r.start, r.end) + 1);
+  const len = Math.max(1, Math.min(10, Math.round((MODEL.periodLen * 2 + sum(done)) / (2 + done.length))));
+
+  const plan = new Set(), maybe = new Set(), fertile = new Set(), ovul = new Set(), starts = [], mids = [];
+  const lut = Math.round(MODEL.luteal);
+  runs.slice(1).forEach((r, i) => { const g = diffDays(runs[i].start, r.start); if (g >= 15 && g <= 60) mids.push(addDays(r.start, -lut)); });
   if (runs.length) {
-    expected = addDays(runs[runs.length - 1].start, avgGap);
-    mids.push(addDays(expected, -14));
-    let s = expected < now ? now : expected;
-    for (let i = 0; i < 6; i++) { starts.push(s); s = addDays(s, avgGap); }
-    starts.slice(1).forEach(s => mids.push(addDays(s, -14)));
+    const last = runs[runs.length - 1];
+    const first = addDays(last.start, Math.round(mu));
+    const late = first < now && now > last.end ? diffDays(first, now) : 0; // 예정일이 지났으면 오늘부터로 밀기
+    for (let k = 1; k <= 6; k++) {
+      const c = addDays(last.start, Math.round(mu * k) + late);
+      const half = Math.max(1, Math.round(q * sd * Math.sqrt(k)));
+      starts.push(c);
+      for (let j = 0; j < len; j++) plan.add(keyOf(addDays(c, j)));
+      for (let j = -half; j <= half + len - 1; j++) { const d = addDays(c, j); if (d > last.end && d >= now) maybe.add(keyOf(d)); }
+      mids.push(addDays(c, -lut));
+    }
   }
+  plan.forEach(k => maybe.delete(k));
   mids.sort((a, b) => a - b);
-  const plan = new Set(), zone = new Set(), mid = new Set();
-  starts.forEach(s => { for (let j = 0; j < avgLen; j++) plan.add(keyOf(addDays(s, j))); });
-  mids.forEach(o => { mid.add(keyOf(o)); for (let j = -5; j <= 1; j++) zone.add(keyOf(addDays(o, j))); });
-  const last = runs[runs.length - 1];
-  const runAt = d => runs.find(r => d >= r.start && d <= r.end);
-
-  return {
-    runs, avgGap, usesDefault: !gaps.length, plan, zone, mid, starts, mids,
-    phase(d) {
-      if (!runs.length) return { type: "none" };
-      const r = runAt(d);
-      if (r) return { type: "red", n: diffDays(r.start, d) + 1 };
-      if (d > expected && d > last.end) return { type: "late", n: diffDays(expected, d) };
-      if (mid.has(keyOf(d))) return { type: "mid" };
-      if (zone.has(keyOf(d))) return { type: "zone" };
-      return { type: "regular" };
-    },
-    dayCount(d) { const r = [...runs].reverse().find(r => r.start <= d); return r ? diffDays(r.start, d) + 1 : null; },
-    nextStart(d) {
-      if (last && d >= last.start && d <= last.end) return starts.find(s => s > last.end);
-      return starts.find(s => s >= d);
-    },
-    zoneWindow(d) { const o = mids.find(o => addDays(o, 1) >= d); return o && { start: addDays(o, -5), end: addDays(o, 1) }; }
-  };
+  mids.forEach(o => { ovul.add(keyOf(o)); for (let j = -5; j <= 1; j++) fertile.add(keyOf(addDays(o, j))); });
+  return { runs, mu, sd, len, plan, maybe, fertile, ovul, starts, mids };
 }
 
 /* ---------- 실시간 공유 (Firebase) ----------
-   서버에는 폰에서 암호화한 데이터만 올라감. 열쇠는 공유 링크의 # 뒤에만 있어서 서버는 내용을 볼 수 없음 */
+   서버에는 폰에서 암호화한 데이터만 올라감.
+   열쇠 = 마스터가 정한 "답"으로 만든 값 → 링크만 있어서는 못 열고, 답을 알아야 열림 */
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 const Cloud = {
   configured: !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId),
@@ -258,13 +302,14 @@ const Cloud = {
   async uid() {
     const { au, auth } = await this.load();
     await auth.authStateReady();
-    if (!auth.currentUser) await au.signInAnonymously(auth); // 익명 로그인: 내 공유만 내가 고칠 수 있게
+    if (!auth.currentUser) await au.signInAnonymously(auth);
     return auth.currentUser.uid;
   },
   async put(id, payload) {
     const { fs, db } = await this.load();
     await fs.setDoc(fs.doc(db, "shares", id), { owner: await this.uid(), v: 1, ...payload, updatedAt: fs.serverTimestamp() });
   },
+  async get(id) { const { fs, db } = await this.load(); const s = await fs.getDoc(fs.doc(db, "shares", id)); return s.exists() ? s.data() : null; },
   async remove(id) { const { fs, db } = await this.load(); await this.uid(); await fs.deleteDoc(fs.doc(db, "shares", id)); },
   async watch(id, onData, onError) {
     const { fs, db } = await this.load();
@@ -274,12 +319,20 @@ const Cloud = {
 
 const b64url = bytes => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
 const unb64url = str => Uint8Array.from(atob(str.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((str.length + 3) % 4)), c => c.charCodeAt(0));
+const randId = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+const norm = s => String(s || "").normalize("NFC").replace(/\s+/g, "").toLowerCase();
+async function sha256hex(s) {
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+  return [...h].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 const Crypt = {
-  async newKey() {
-    const k = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-    return b64url(new Uint8Array(await crypto.subtle.exportKey("raw", k)));
-  },
   key: k => crypto.subtle.importKey("raw", unb64url(k), "AES-GCM", false, ["encrypt", "decrypt"]),
+  // 답 → 열쇠 (일부러 느리게 만들어 답을 하나씩 대입해 보기 어렵게)
+  async fromAnswer(answer, salt) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(norm(answer)), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unb64url(salt), iterations: 310000 }, base, 256);
+    return b64url(new Uint8Array(bits));
+  },
   async encrypt(k, obj) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await this.key(k), new TextEncoder().encode(JSON.stringify(obj)));
@@ -291,11 +344,26 @@ const Crypt = {
   }
 };
 
-const shareLink = () => data.myShare && `${location.origin}${location.pathname}#s=${data.myShare.id}.${data.myShare.key}`;
-// notifyId: 파트너가 내 알림을 구독할 때 쓰는 채널 ID (암호화된 공유 데이터 안에만 들어감)
-const snapshot = () => ({ format: "cal", version: 1, kind: "share", name: "", exportedAt: isoNow(), logs: data.logs,
-  gap: DEFAULT_GAP, len: DEFAULT_LEN, notifyId: data.notify && data.notify.claimed ? data.notify.id : null });
-const shareFp = () => JSON.stringify([data.logs, data.notify && data.notify.claimed ? data.notify.id : null]);
+// 슬레이브 초대 링크: #j=공유ID.소금값.질문
+const joinLink = () => data.myShare &&
+  `${location.origin}${location.pathname}#j=${data.myShare.id}.${data.myShare.salt}.${b64url(new TextEncoder().encode(data.myShare.question))}`;
+function parseJoin(text) {
+  const m = String(text || "").match(/#j=([A-Za-z0-9_-]{10,})\.([A-Za-z0-9_-]{16,})\.([A-Za-z0-9_-]+)/);
+  if (!m) return null;
+  try { return { id: m[1], salt: m[2], question: new TextDecoder().decode(unb64url(m[3])) }; } catch { return null; }
+}
+
+// 슬레이브에게 보내는 내용: 보여주기로 한 것만 (생리 기록은 예측 계산에 필요해서 항상 포함)
+function snapshot() {
+  const show = data.show, logs = {};
+  for (const [k, v] of Object.entries(data.logs)) {
+    const l = { r: v.r, h: show.sex && v.h, s: show.shave && v.s };
+    if (l.r || l.h || l.s) logs[k] = l;
+  }
+  return { format: "cal", version: 2, exportedAt: isoNow(), logs, show,
+           notifyId: data.notify && data.notify.claimed ? data.notify.id : null };
+}
+const shareFp = () => JSON.stringify([data.logs, data.show, data.notify && data.notify.claimed ? data.notify.id : null]);
 const sync = { timer: null, unsub: null, live: false, gone: false, error: "" };
 
 function scheduleSync(delay = 800) {
@@ -306,21 +374,28 @@ function scheduleSync(delay = 800) {
 async function pushShare() {
   const share = data.myShare; if (!share) return;
   const fp = shareFp();
-  if (fp === share.fp) return; // 바뀐 게 없으면 올리지 않음
+  if (fp === share.fp) return;
   try {
     await Cloud.put(share.id, await Crypt.encrypt(share.key, snapshot()));
-    share.fp = fp; share.at = isoNow(); sync.error = ""; persist();
+    share.fp = fp; sync.error = ""; persist();
   } catch (e) {
-    sync.error = e.code === "permission-denied" ? "이 기기에서 공유를 수정할 권한이 없어요. 공유를 중지하고 새 링크를 만들어 주세요." : "인터넷 연결 후 자동으로 올려요.";
+    sync.error = e.code === "permission-denied" ? "이 기기에서 공유를 수정할 수 없어요. 연결을 새로 만들어 주세요." : "인터넷 연결 후 자동으로 올려요.";
   }
   refresh();
 }
-async function createShare() {
-  const id = b64url(crypto.getRandomValues(new Uint8Array(15))), key = await Crypt.newKey();
+async function createShare(question, answer) {
+  const id = randId(15), salt = randId(16), key = await Crypt.fromAnswer(answer, salt);
+  if (NOTIFY) await ensureChannel().catch(() => {});
   await Cloud.put(id, await Crypt.encrypt(key, snapshot()));
-  data.myShare = { id, key, fp: shareFp(), at: isoNow() };
+  data.myShare = { id, salt, key, question, fp: shareFp() };
   persist();
 }
+async function stopShare() {
+  if (data.myShare) { try { await Cloud.remove(data.myShare.id); } catch {} }
+  data.myShare = null; data.pendingNotify = false; persist();
+  await rotateChannel(); // 한 마스터당 한 슬레이브: 예전 슬레이브의 알림도 끊음
+}
+
 async function watchPartner() {
   if (sync.unsub) { sync.unsub(); sync.unsub = null; }
   sync.live = false; sync.gone = false;
@@ -331,31 +406,29 @@ async function watchPartner() {
       if (!doc) { sync.gone = true; refresh(); return; }
       try {
         const snap = await Crypt.decrypt(link.key, doc);
-        data.partner = { exportedAt: String(snap.exportedAt || ""), logs: cleanLogs(snap.logs),
+        data.partner = { exportedAt: String(snap.exportedAt || ""), logs: cleanLogs(snap.logs), show: cleanShow(snap.show),
                          notifyId: typeof snap.notifyId === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(snap.notifyId) ? snap.notifyId : null };
-        sync.live = true; sync.gone = false; persist(); rebuild();
-      } catch { sync.error = "파트너 데이터를 열지 못했어요. 링크를 다시 받아 주세요."; }
+        sync.live = true; sync.gone = false; sync.error = ""; persist(); rebuild();
+      } catch { sync.error = "데이터를 열지 못했어요."; }
       refresh();
     }, () => { sync.live = false; refresh(); });
   } catch { sync.live = false; }
 }
-function parseLink(text) {
-  const m = String(text || "").match(/#s=([A-Za-z0-9_-]{10,})\.([A-Za-z0-9_-]{40,})/);
-  return m && { id: m[1], key: m[2] };
-}
-function connectPartner(link) {
-  data.partnerLink = link; data.partner = null; persist(); rebuild(); watchPartner();
+// 슬레이브: 질문에 답하면 연결
+async function joinWith(join, answer) {
+  const key = await Crypt.fromAnswer(answer, join.salt);
+  const doc = await Cloud.get(join.id);
+  if (!doc) throw new Error("gone");
+  try { await Crypt.decrypt(key, doc); } catch { throw new Error("wrong"); }
+  data.mode = "partner"; data.partnerLink = { id: join.id, key }; data.partner = null;
+  persist(); rebuild(); watchPartner();
 }
 
-/* ---------- 알림 (Cloudflare Worker + Web Push) ----------
-   - 내 채널(data.notify): 내가 주인. 파트너 구독 + 내 예정일 알림 구독이 여기 붙음
-   - 생리 기록이 바뀌면 /notify (파트너에게만, 서버가 10분에 1번으로 제한)
-   - 예정일 알림 날짜는 내 폰이 계산해서 /schedule 로 보냄 (날짜와 종류만) */
+/* ---------- 알림 (Cloudflare Worker + Web Push) ---------- */
 const NOTIFY = window.NOTIFY_CONFIG && window.NOTIFY_CONFIG.workerUrl ? window.NOTIFY_CONFIG : null;
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isStandalone = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 const pushReady = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !(isIOS() && !isStandalone());
-const randId = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
 async function api(path, body) {
   const res = await fetch(NOTIFY.workerUrl.replace(/\/$/, "") + path, {
@@ -365,17 +438,14 @@ async function api(path, body) {
   if (!res.ok) throw Object.assign(new Error(json.error || "http"), { status: res.status });
   return json;
 }
-
 async function ensureChannel() {
   if (!data.notify) { data.notify = { id: randId(18), token: randId(32), claimed: false }; persist(); }
   if (!data.notify.claimed) {
     await api("/claim", { id: data.notify.id, token: data.notify.token });
-    data.notify.claimed = true; persist();
-    scheduleSync(0); // 공유 데이터에 채널 ID를 넣어 파트너에게 전달
+    data.notify.claimed = true; persist(); scheduleSync(0);
   }
   return data.notify;
 }
-
 async function currentSubscription(ask) {
   if (Notification.permission !== "granted") {
     if (!ask) return null;
@@ -385,9 +455,8 @@ async function currentSubscription(ask) {
   return (await reg.pushManager.getSubscription())
     || (ask ? reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64url(NOTIFY.vapidPublicKey) }) : null);
 }
-
 async function enablePush(role) {
-  const sub = (await currentSubscription(true)).toJSON(); // 권한 요청은 버튼을 누른 직후에 해야 해서 맨 먼저
+  const sub = (await currentSubscription(true)).toJSON();
   if (role === "self") {
     const ch = await ensureChannel();
     await api("/subscribe", { id: ch.id, token: ch.token, role, subscription: sub });
@@ -398,10 +467,8 @@ async function enablePush(role) {
     await api("/subscribe", { id: nid, role, subscription: sub });
     data.pushPartner = nid;
   }
-  persist();
-  scheduleReminders(0);
+  persist(); scheduleReminders(0);
 }
-
 async function disablePush(role) {
   try {
     const sub = await currentSubscription(false);
@@ -413,8 +480,6 @@ async function disablePush(role) {
   if (role === "self") data.pushSelf = false; else data.pushPartner = null;
   persist();
 }
-
-// 공유를 중지하면 채널을 새로 만들어 기존 파트너 구독을 끊음 (내 예정일 알림은 유지)
 async function rotateChannel() {
   const old = data.notify;
   data.notify = null; persist();
@@ -428,27 +493,22 @@ async function rotateChannel() {
     scheduleReminders(0);
   } catch {}
 }
-
 let notifyTimer = null;
 function queueUpdateNotify() {
   if (!NOTIFY || !data.myShare || !data.notify || !data.notify.claimed) return;
   data.pendingNotify = true; persist();
   clearTimeout(notifyTimer);
-  notifyTimer = setTimeout(sendUpdateNotify, 5000); // 연달아 체크하면 마지막 체크 5초 뒤 한 번
+  notifyTimer = setTimeout(sendUpdateNotify, 5000);
 }
 async function sendUpdateNotify() {
   if (!data.pendingNotify || !data.notify || !data.notify.claimed) return;
   try { await api("/notify", { id: data.notify.id, token: data.notify.token }); data.pendingNotify = false; persist(); } catch {}
 }
-
 function reminderItems() {
   const t = today(), tk = keyOf(t), items = [];
   if (!engine.runs.length) return items;
-  engine.starts.slice(0, 2).forEach(s => {
-    items.push({ date: keyOf(addDays(s, -2)), kind: "pre2" }, { date: keyOf(s), kind: "start" });
-  });
-  engine.mids.map(o => addDays(o, -5)).filter(d => d >= t).slice(0, 2)
-    .forEach(d => items.push({ date: keyOf(d), kind: "zone" }));
+  engine.starts.slice(0, 2).forEach(s => items.push({ date: keyOf(addDays(s, -2)), kind: "pre2" }, { date: keyOf(s), kind: "start" }));
+  engine.mids.map(o => addDays(o, -5)).filter(d => d >= t).slice(0, 2).forEach(d => items.push({ date: keyOf(d), kind: "zone" }));
   return items.filter(i => i.date >= tk).sort((a, b) => a.date < b.date ? -1 : 1);
 }
 let reminderTimer = null;
@@ -462,234 +522,242 @@ async function pushReminders() {
   if (fp === data.notify.schedFp) return;
   try { await api("/schedule", { id: data.notify.id, token: data.notify.token, items }); data.notify.schedFp = fp; persist(); } catch {}
 }
-
 function notifyError(e) {
   if (e.message === "denied") return "알림이 꺼져 있어요. 아이폰 설정 → 알림 → 캘린더에서 허용해 주세요.";
-  if (e.message === "no-channel") return "파트너 쪽 알림 기능이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.";
+  if (e.message === "no-channel") return "마스터 쪽 알림이 아직 준비되지 않았어요.";
   return "알림을 켜지 못했어요. 인터넷 연결을 확인해 주세요.";
 }
 
-/* ---------- 화면에 나오는 말 ----------
-   둘만의 용어로 바꿀 땐 여기만 고치면 돼요. (알림 문구는 worker/src/index.js 의 MESSAGES) */
-const T = {
-  period: "생리",          // 다음 생리, 생리까지
-  periodOn: "생리 중",     // 날짜 기록 스위치
-  periodPlan: "생리 예정", // 캘린더 범례, 생리 예정일
-  sex: "관계",             // 날짜 기록 스위치, 범례
-  fertile: "가임기",
-  ovulation: "배란일",
-  cycle: "주기"
-};
-
 /* ---------- 화면 ---------- */
-const state = { month: { me: today(), partner: today() }, dayKey: null };
+const state = { month: { me: today(), partner: today() }, dayKey: null, join: null, gateError: "", busy: false };
 const $ = id => document.getElementById(id);
-const dot = d => `${d.getMonth() + 1}.${d.getDate()}`;
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ICON = {
-  left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
-  right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`,
-  heart: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.2s-7.6-4.7-9.6-9.4C1 8.4 3.2 4.8 6.8 4.8c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.6 0 5.8 3.6 4.4 7-2 4.7-9.6 9.4-9.6 9.4z"/></svg>`
+  left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
+  right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.2s-7.6-4.7-9.6-9.4C1 8.4 3.2 4.8 6.8 4.8c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.6 0 5.8 3.6 4.4 7-2 4.7-9.6 9.4-9.6 9.4z"/></svg>`,
+  bush: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21c.5-4 .2-7-1-10M8.5 21c0-5 .8-9 2.5-13M13.5 21c.2-5 1.5-8.5 4-11.5M18.5 21c.3-3 1.2-5 2.5-6.5"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg>`,
+  heartbg: `<svg class="heartbg" viewBox="0 0 42 42"><path d="M21 37s-14-8.6-17.4-17.2C1.2 13.6 5 7 11.6 7c3.9 0 6.6 2.1 9.4 5.6C23.8 9.1 26.5 7 30.4 7 37 7 40.8 13.6 38.4 19.8 35 28.4 21 37 21 37z"/></svg>`
 };
 
-function heroHtml(e) {
-  const t = today(), ph = e.phase(t);
-  if (ph.type === "none") return `<div class="hero"><div class="value text">첫 기록을 남겨 주세요</div>
-    <div class="note">날짜를 눌러 기록하면 예측을 시작해요.</div></div>`;
-  const next = e.nextStart(t), w = e.zoneWindow(t), nd = next ? diffDays(t, next) : null;
-  let label, value, unit = "", text = false;
-  switch (ph.type) {
-    case "red": label = T.periodOn; value = ph.n; unit = "일째"; break;
-    case "late": label = "예정일보다"; value = ph.n; unit = "일 늦어요"; break;
-    case "mid": label = "오늘은"; value = T.ovulation; text = true; break;
-    case "zone": label = "지금은"; value = T.fertile; text = true; break;
-    default:
-      if (nd === 0) { label = "오늘은"; value = `${T.periodPlan}일`; text = true; }
-      else { label = `${T.period}까지`; value = nd; unit = "일"; }
-  }
-  const stats = [
-    [`다음 ${T.period}`, next ? `${next.getMonth() + 1}월 ${next.getDate()}일` : "–"],
-    [T.fertile, w ? `${dot(w.start)} – ${dot(w.end)}` : "–"],
-    [`평균 ${T.cycle}`, `${e.avgGap}일${e.usesDefault ? "<em>기본</em>" : ""}`]
-  ];
-  return `<div class="hero"><div class="label">${label}</div>
-      <div class="value${text ? " text" : ""}">${value}${unit ? `<small>${unit}</small>` : ""}</div>
-      <div class="note">${T.cycle} ${e.dayCount(t)}일째</div></div>
-    <div class="stats">${stats.map(([k, v]) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>`;
-}
-
-function calendarHtml(scope, e, logs, editable) {
+function calendarHtml(scope, e, logs, show, editable) {
   const m = state.month[scope], y = m.getFullYear(), mo = m.getMonth(), t = today();
-  let cells = WD.map(w => `<div class="wd">${w}</div>`).join("");
+  let cells = WD.map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("");
   for (let i = 0; i < new Date(y, mo, 1).getDay(); i++) cells += "<div></div>";
   for (let d = 1; d <= new Date(y, mo + 1, 0).getDate(); d++) {
-    const date = new Date(y, mo, d), k = keyOf(date), l = logs[k], isToday = diffDays(date, t) === 0;
+    const date = new Date(y, mo, d), k = keyOf(date), l = logs[k];
+    const anniv = show.anniv && annivOf(date);
     const c = ["day"];
-    if (isRed(l)) c.push("period");
-    else if (e.plan.has(k)) c.push("plan");
-    else if (e.mid.has(k)) c.push("ovul");
-    else if (e.zone.has(k)) c.push("zone");
-    if (isToday) c.push("today");
-    const marks = (isToday ? `<span class="dot"></span>` : "") + (l && l.h ? ICON.heart : "");
-    cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"} aria-label="${mo + 1}월 ${d}일"><span class="n">${d}</span><span class="i">${marks}</span></button>`;
+    if (isHoliday(date)) c.push("hol");
+    if (diffDays(date, t) === 0) c.push("today");
+    if (anniv) c.push("anniv");
+    const bars = [];
+    if (show.period && isRed(l)) bars.push("period");
+    else if (show.plan && e.plan.has(k)) bars.push("plan");
+    else if (show.plan && e.maybe.has(k)) bars.push("maybe");
+    if (show.fertile && e.fertile.has(k)) bars.push("fertile");
+    const icons = [];
+    if (show.ovul && e.ovul.has(k)) icons.push(`<span class="ic-ovul">${ICON.check}</span>`);
+    if (show.sex && l && l.h) icons.push(`<span class="ic-sex">${ICON.heart}</span>`);
+    if (show.shave && l && l.s) icons.push(`<span class="ic-shave">${ICON.bush}</span>`);
+    cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"} aria-label="${mo + 1}월 ${d}일${anniv ? " " + anniv : ""}">`
+      + `<span class="n">${anniv ? ICON.heartbg : ""}<span>${d}</span></span>`
+      + `<span class="bars">${bars.map(b => `<i class="bar ${b}"></i>`).join("")}</span>`
+      + `<span class="icons">${icons.join("")}</span></button>`;
   }
-  return `<div class="card">
-    <div class="cal-head"><b>${y}년 ${mo + 1}월</b>
-      <div class="nav"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div></div>
+  const lg = [];
+  if (show.period) lg.push(`<span><i class="lb" style="background:var(--period)"></i>${T.period}</span>`);
+  if (show.plan) lg.push(`<span><i class="lb" style="background:var(--plan)"></i>${T.periodPlan}</span>`,
+                         `<span><i class="lb" style="background:var(--plan);height:2px;opacity:.45"></i>${T.periodMaybe}</span>`);
+  if (show.fertile) lg.push(`<span><i class="lb" style="background:var(--fertile)"></i>${T.fertile}</span>`);
+  if (show.ovul) lg.push(`<span><span class="ic-ovul">${ICON.check}</span>${T.ovulation}</span>`);
+  if (show.sex) lg.push(`<span><span class="ic-sex">${ICON.heart}</span>${T.sex}</span>`);
+  if (show.shave) lg.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
+  return `<div class="cal" data-scope="${scope}">
+    <div class="cal-head"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button>
+      <b>${mo + 1}월</b><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
     <div class="grid">${cells}</div>
-    <div class="legend">
-      <span><i style="background:var(--period)"></i>${T.period}</span>
-      <span><i style="background:var(--period-soft)"></i>${T.periodPlan}</span>
-      <span><i style="background:var(--fertile-soft)"></i>${T.fertile}</span>
-      <span><i style="background:var(--fertile-soft);box-shadow:inset 0 0 0 1.5px var(--ovul)"></i>${T.ovulation}</span>
-      <span>${ICON.heart}${T.sex}</span>
-    </div></div>`;
+    <div class="legend">${lg.join("")}</div></div>`;
 }
 
-function meView() {
-  return heroHtml(engine) + calendarHtml("me", engine, data.logs, true) + shareGroup() + notifyGroup();
+// 첫 화면: 암호 입력. 마스터 암호면 마스터, 초대 링크로 왔으면 질문에 답하기
+function gateView() {
+  if (state.join) return `<div class="gate"><h1>캘린더</h1><p>${esc(state.join.question)}</p>
+    <div class="stack"><input class="field" id="gate-in" type="password" maxlength="10" autocomplete="off" placeholder="답">
+    <button class="btn" data-action="join" ${state.busy ? "disabled" : ""}>${state.busy ? "확인 중…" : "확인"}</button></div>
+    <div class="err">${esc(state.gateError)}</div></div>`;
+  return `<div class="gate"><h1>캘린더</h1><p>암호를 입력해 주세요.</p>
+    <div class="stack"><input class="field" id="gate-in" type="password" autocomplete="off" placeholder="암호 또는 초대 링크">
+    <button class="btn" data-action="gate">확인</button></div>
+    <div class="err">${esc(state.gateError)}</div></div>`;
 }
 
-function shareGroup() {
+function masterView() {
+  return calendarHtml("me", engine, data.logs, SHOW_ALL, true) + slaveGroup() + showGroup() + notifyGroup();
+}
+
+function slaveGroup() {
   if (!Cloud.configured) return "";
-  const items = !data.myShare
-    ? `<div class="item"><div class="t"><b>공유 링크</b><span>파트너가 실시간으로 볼 수 있어요</span></div><button class="pill" data-action="share-create">만들기</button></div>`
-    : `<div class="item"><div class="t"><b>공유 중</b><span>${sync.error || "기록하면 파트너 화면에 바로 반영돼요"}</span></div><button class="pill" data-action="share-send">링크 보내기</button></div>
-       <div class="item"><div class="t"><b>공유 중지</b><span>파트너가 더 이상 볼 수 없어요</span></div><button class="textbtn" data-action="share-stop">중지</button></div>`;
-  return `<div class="group"><h2>파트너</h2><div class="list">${items}</div></div>`;
+  if (!data.myShare) return `<div class="group"><h2>슬레이브 연결</h2>
+    <p class="note">질문과 답을 정하면 초대 링크가 만들어져요. 슬레이브는 링크를 열고 답을 맞혀야 연결돼요.</p>
+    <div class="stack"><input class="field" id="q-in" maxlength="40" placeholder="질문" autocomplete="off"><input class="field" id="a-in" maxlength="10" placeholder="답 (10자 이내)" autocomplete="off">
+    <button class="btn" data-action="share-create" ${state.busy ? "disabled" : ""}>${state.busy ? "만드는 중…" : "초대 링크 만들기"}</button></div></div>`;
+  return `<div class="group"><h2>슬레이브 연결</h2>
+    <div class="row"><span class="t">질문: ${esc(data.myShare.question)}<small>${esc(sync.error) || "기록하면 슬레이브 화면에 바로 반영돼요"}</small></span><button class="btn" data-action="share-send">링크 보내기</button></div>
+    <div class="row"><span class="t">연결 끊기<small>지금 슬레이브는 더 이상 볼 수 없어요</small></span><button class="link" data-action="share-stop">끊기</button></div></div>`;
+}
+
+function showGroup() {
+  const items = [["period", T.period], ["plan", `${T.periodPlan} · ${T.periodMaybe}`], ["fertile", T.fertile], ["ovul", T.ovulation], ["sex", T.sex], ["shave", T.shave], ["anniv", T.anniv]];
+  return `<div class="group"><h2>슬레이브에게 보여줄 것</h2>
+    ${items.map(([k, label]) => `<label class="row"><span class="t">${label}</span><input type="checkbox" class="switch" data-show="${k}" ${data.show[k] ? "checked" : ""}></label>`).join("")}</div>`;
 }
 
 function notifyGroup() {
   if (!NOTIFY) return "";
   const ready = pushReady();
-  const desc = ready ? `오전 9시에 ${T.period}·${T.fertile} 일정을 알려 드려요` : "홈 화면에 추가한 앱에서 켤 수 있어요";
-  return `<div class="group"><h2>알림</h2><div class="list"><label class="item"><span class="t"><b>예정일 알림</b><span>${desc}</span></span>
-    ${ready ? `<input type="checkbox" class="switch" data-push="self" ${data.pushSelf ? "checked" : ""}>` : ""}</label></div></div>`;
+  return `<div class="group"><h2>알림</h2><label class="row"><span class="t">예정일 알림<small>${ready ? `오전 9시에 ${T.period}·${T.fertile} 일정을 알려 드려요` : "홈 화면에 추가한 앱에서 켤 수 있어요"}</small></span>
+    ${ready ? `<input type="checkbox" class="switch" data-push="self" ${data.pushSelf ? "checked" : ""}>` : ""}</label></div>`;
 }
 
-// 처음 여는 화면: 어떻게 쓸지 고르기
-function welcomeView() {
-  return `<div class="welcome"><h1>캘린더</h1><p>이 기기에서 어떻게 쓸지 골라 주세요.</p>
-    <button class="pill start" data-action="mode-me">내 캘린더 시작하기</button>
-    <div class="or">또는 받은 공유 링크로 보기</div>${linkInput()}</div>`;
-}
-const linkInput = () => `<div class="field"><input type="text" id="link-in" placeholder="공유 링크 붙여넣기" autocomplete="off"><button class="pill" data-action="connect">연결</button></div>`;
-
-// 파트너 화면: 공유받은 캘린더만 (알림은 켜기 전까지만 버튼 하나 표시)
-function partnerView() {
-  if (!Cloud.configured) return `<p class="msg">설정이 필요해요.</p>`;
-  if (!data.partnerLink || sync.gone) return `<p class="msg">${sync.gone ? "공유가 중지됐어요. 새 링크를 받았다면 붙여 넣어 주세요." : "받은 공유 링크를 붙여 넣어 주세요."}</p>${linkInput()}`;
-  if (!partnerEngine) return `<p class="msg">불러오는 중…</p>`;
+// 슬레이브 화면: 캘린더만
+function slaveView() {
+  if (!data.partnerLink || sync.gone) return `<div class="gate"><h1>캘린더</h1><p>${sync.gone ? "연결이 끊겼어요. 새 초대 링크를 받아 주세요." : "초대 링크를 열어 주세요."}</p>
+    <div class="stack"><input class="field" id="gate-in" autocomplete="off" placeholder="초대 링크"><button class="btn" data-action="gate">확인</button></div><div class="err">${esc(state.gateError)}</div></div>`;
+  if (!partnerEngine) return `<p class="center note">불러오는 중…</p>`;
   const nid = data.partner.notifyId;
   const askPush = NOTIFY && nid && pushReady() && data.pushPartner !== nid;
-  return calendarHtml("partner", partnerEngine, data.partner.logs, false)
-    + (askPush ? `<div class="center"><button class="textbtn" data-action="push-partner" data-on="0">알림 받기</button></div>` : "");
+  return calendarHtml("partner", partnerEngine, data.partner.logs, data.partner.show, false)
+    + (askPush ? `<div class="center"><button class="link" data-action="push-partner">알림 받기</button></div>` : "");
 }
 
 function render() {
-  $("view").innerHTML = data.mode === "me" ? meView() : data.mode === "partner" ? partnerView() : welcomeView();
+  $("view").innerHTML = state.join || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
 }
-// 입력 중일 때는 화면을 다시 그리지 않음
-function refresh() { if (!$("day").open && document.activeElement?.id !== "link-in") render(); }
+function refresh() {
+  const a = document.activeElement;
+  if (!$("day").open && !(a && a.tagName === "INPUT" && a.type !== "checkbox")) render();
+}
 
 /* ---------- 이벤트 ---------- */
 document.addEventListener("click", async e => {
   const el = e.target.closest("button"); if (!el) return;
-  if (el.dataset.month) { const s = el.dataset.month, m = state.month[s]; state.month[s] = new Date(m.getFullYear(), m.getMonth() + Number(el.dataset.delta), 1); render(); return; }
+  if (el.dataset.month) { shiftMonth(el.dataset.month, Number(el.dataset.delta)); return; }
   if (el.dataset.day) { openDay(el.dataset.day); return; }
   switch (el.dataset.action) {
-    case "share-create":
-      el.disabled = true; el.textContent = "만드는 중…";
-      if (NOTIFY) await ensureChannel().catch(() => {}); // 알림 채널 ID를 공유 데이터에 함께 넣기 위해 먼저
-      try { await createShare(); scheduleReminders(0); } catch { alert("공유 링크를 만들지 못했어요. 인터넷 연결과 Firebase 설정을 확인해 주세요."); }
-      render(); break;
-    case "push-self":
-    case "push-partner": {
-      const role = el.dataset.action === "push-self" ? "self" : "partner";
-      el.disabled = true;
-      try { el.dataset.on === "1" ? await disablePush(role) : await enablePush(role); }
-      catch (err) { alert(notifyError(err)); }
-      render(); break;
+    case "gate": {
+      const v = $("gate-in").value, join = parseJoin(v);
+      if (join) { state.join = join; state.gateError = ""; render(); return; }
+      if (await sha256hex("cal-master:" + norm(v)) === MASTER_HASH) { data.mode = "me"; persist(); state.gateError = ""; render(); catchUp(); return; }
+      state.gateError = "암호가 맞지 않아요."; render(); return;
+    }
+    case "join": {
+      const answer = $("gate-in").value;
+      if (!norm(answer)) return;
+      state.busy = true; state.gateError = ""; render();
+      try { await joinWith(state.join, answer); state.join = null; }
+      catch (err) { state.gateError = err.message === "wrong" ? "답이 맞지 않아요." : err.message === "gone" ? "만료된 초대 링크예요." : "연결하지 못했어요. 인터넷을 확인해 주세요."; }
+      state.busy = false; render(); return;
+    }
+    case "share-create": {
+      const q = $("q-in").value.trim(), a = $("a-in").value;
+      if (!q || !norm(a)) { alert("질문과 답을 모두 입력해 주세요."); return; }
+      if (norm(a).length > 10) { alert("답은 10자 이내로 정해 주세요."); return; }
+      state.busy = true; render();
+      try { await createShare(q, a); scheduleReminders(0); } catch { alert("초대 링크를 만들지 못했어요. 인터넷 연결을 확인해 주세요."); }
+      state.busy = false; render(); return;
     }
     case "share-send": {
-      const url = shareLink();
+      const url = joinLink();
       if (navigator.share) navigator.share({ url }).catch(() => {});
       else navigator.clipboard?.writeText(url).then(() => alert("링크를 복사했어요."), () => prompt("링크를 복사하세요.", url));
-      break;
+      return;
     }
     case "share-stop":
-      if (!confirm("공유를 중지할까요? 파트너는 더 이상 내 캘린더를 볼 수 없어요.")) return;
-      try { await Cloud.remove(data.myShare.id); } catch {}
-      data.myShare = null; data.pendingNotify = false; persist();
-      await rotateChannel();
-      render(); break;
-    case "connect": {
-      const link = parseLink($("link-in").value);
-      if (!link) { alert("공유 링크가 아니에요. 링크 전체를 붙여 넣어 주세요."); return; }
-      data.mode = "partner"; connectPartner(link); render(); break;
-    }
-    case "mode-me": {
-      data.mode = "me"; persist(); render(); break;
-    }
+      if (!confirm("연결을 끊을까요? 새 슬레이브를 연결하려면 초대 링크를 다시 만들어야 해요.")) return;
+      await stopShare(); render(); return;
+    case "push-partner":
+      el.disabled = true;
+      try { await enablePush("partner"); } catch (err) { alert(notifyError(err)); }
+      render(); return;
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "gate-in") document.querySelector('[data-action="gate"],[data-action="join"]')?.click();
+});
+
+document.addEventListener("change", async e => {
+  const el = e.target;
+  if (el.dataset && el.dataset.show) { data.show[el.dataset.show] = el.checked; persist(); scheduleSync(0); return; }
+  if (el.dataset && el.dataset.push) {
+    const want = el.checked; el.disabled = true;
+    try { want ? await enablePush(el.dataset.push) : await disablePush(el.dataset.push); } catch (err) { alert(notifyError(err)); }
+    render();
   }
 });
 
-// 알림 스위치
-document.addEventListener("change", async e => {
-  const el = e.target; if (!el.dataset || !el.dataset.push) return;
-  const want = el.checked; el.disabled = true;
-  try { want ? await enablePush(el.dataset.push) : await disablePush(el.dataset.push); }
-  catch (err) { alert(notifyError(err)); }
-  render();
+function shiftMonth(scope, delta) {
+  const m = state.month[scope]; state.month[scope] = new Date(m.getFullYear(), m.getMonth() + delta, 1); render();
+}
+// 좌우로 밀어서 달 넘기기
+let swipe = null;
+document.addEventListener("touchstart", e => {
+  const c = e.target.closest(".cal"); if (!c) return;
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, scope: c.dataset.scope };
+}, { passive: true });
+document.addEventListener("touchend", e => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y, s = swipe.scope; swipe = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) shiftMonth(s, dx < 0 ? 1 : -1);
 });
 
 $("lbl-period").textContent = T.periodOn;
 $("lbl-sex").textContent = T.sex;
+$("lbl-shave").textContent = T.shave;
 function openDay(k) {
   state.dayKey = k;
-  const d = dateOf(k), l = data.logs[k];
-  $("day-title").textContent = `${md(d)} (${WD[d.getDay()]})`;
+  const d = dateOf(k), l = data.logs[k], anniv = annivOf(d);
+  $("day-title").textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 (${WD[d.getDay()]})`;
+  $("day-sub").textContent = anniv ? `${T.anniv} · ${anniv}` : "";
   $("chk-red").checked = isRed(l);
   $("chk-heart").checked = !!(l && l.h);
+  $("chk-shave").checked = !!(l && l.s);
   $("day").showModal();
 }
 function updateDay() {
   const k = state.dayKey;
-  const l = { r: $("chk-red").checked, h: $("chk-heart").checked };
+  const l = { r: $("chk-red").checked, h: $("chk-heart").checked, s: $("chk-shave").checked };
   const redChanged = isRed(data.logs[k]) !== l.r;
-  if (l.r || l.h) data.logs[k] = l; else delete data.logs[k];
+  if (l.r || l.h || l.s) data.logs[k] = l; else delete data.logs[k];
   save(); render();
-  if (redChanged) queueUpdateNotify(); // ♥만 바뀌면 알림 안 보냄
+  if (redChanged) queueUpdateNotify(); // 생리 기록이 바뀔 때만 슬레이브에게 알림
 }
-$("chk-red").addEventListener("change", updateDay);
-$("chk-heart").addEventListener("change", updateDay);
+["chk-red", "chk-heart", "chk-shave"].forEach(id => $(id).addEventListener("change", updateDay));
 $("day-close").addEventListener("click", () => $("day").close());
 $("day").addEventListener("click", e => { if (e.target === $("day")) $("day").close(); });
 
 /* ---------- 시작 ---------- */
 function handleHash() {
-  const link = parseLink(location.hash); if (!link) return;
+  const join = parseJoin(location.hash); if (!join) return;
   history.replaceState(null, "", location.pathname + location.search);
-  if (data.partnerLink && data.partnerLink.id === link.id && data.mode === "partner") return;
-  const msg = data.mode === "me" ? "이 기기를 파트너 캘린더 보기용으로 바꿀까요? 이 기기의 내 기록은 지워지지 않지만 화면에는 안 보여요." : "파트너 캘린더를 연결할까요?";
-  if (confirm(msg)) { data.mode = "partner"; connectPartner(link); render(); }
+  if (data.mode === "partner" && data.partnerLink && data.partnerLink.id === join.id) return;
+  state.join = join; state.gateError = ""; render();
 }
 window.addEventListener("hashchange", handleHash);
 function catchUp() {
+  if (data.mode !== "me") return;
   scheduleSync(0);
   if (NOTIFY && data.myShare && !(data.notify && data.notify.claimed)) ensureChannel().catch(() => {});
   scheduleReminders(0);
   if (data.pendingNotify) sendUpdateNotify();
+  if (oldShareId && Cloud.configured) { const id = oldShareId; oldShareId = null; Cloud.remove(id).catch(() => {}); persist(); }
 }
 window.addEventListener("online", () => { catchUp(); if (!sync.live) watchPartner(); });
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
-  rebuild(); refresh(); catchUp();
-});
-// 알림을 눌러 열었을 때 해당 탭으로
-if (new URLSearchParams(location.search).has("tab")) history.replaceState(null, "", location.pathname + location.hash);
-navigator.serviceWorker?.addEventListener("message", e => {
-  if (e.data && e.data.tab) { rebuild(); render(); }
-});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { rebuild(); refresh(); catchUp(); } });
+{ const q = new URLSearchParams(location.search);
+  if (q.has("tab")) { q.delete("tab"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } }
+navigator.serviceWorker?.addEventListener("message", () => { rebuild(); render(); });
 
 rebuild();
 render();
