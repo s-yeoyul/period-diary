@@ -13,10 +13,10 @@ const MAX_ITEMS = 20;
 const PUSH_HOSTS = [/^web\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/];
 
 const MESSAGES = {
-  update:  { partner: "파트너가 캘린더를 업데이트했어요" },
-  pre2:    { self: "2일 뒤 빨간 날이에요",    partner: "파트너의 빨간 날이 2일 남았어요" },
-  start:   { self: "오늘은 빨간 날 예정일이에요", partner: "오늘은 파트너의 빨간 날 예정일이에요" },
-  zone:    { self: "오늘부터 초록 구간이에요",  partner: "오늘부터 파트너의 초록 구간이에요" }
+  update:  { partner: "파트너가 생리 기록을 업데이트했어요" },
+  pre2:    { self: "2일 뒤 생리 예정이에요",   partner: "파트너의 생리 예정일이 2일 남았어요" },
+  start:   { self: "오늘 생리 예정일이에요",   partner: "오늘은 파트너의 생리 예정일이에요" },
+  zone:    { self: "오늘부터 가임기예요",      partner: "오늘부터 파트너의 가임기예요" }
 };
 
 export default {

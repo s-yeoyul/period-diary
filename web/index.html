@@ -65,8 +65,8 @@ dialog .row button{flex:1}
 
 <dialog id="day">
   <h3 id="day-title"></h3>
-  <label class="check"><input type="checkbox" id="chk-red"> 빨간 날</label>
-  <label class="check"><input type="checkbox" id="chk-heart"> ♥</label>
+  <label class="check"><input type="checkbox" id="chk-red"> 생리 중</label>
+  <label class="check"><input type="checkbox" id="chk-heart"> 관계</label>
   <div class="row"><button id="day-close">닫기</button></div>
 </dialog>
 
@@ -120,7 +120,7 @@ function rebuild() {
 function save() { persist(); rebuild(); scheduleSync(); scheduleReminders(); }
 
 /* ---------- 예측 ----------
-   최근 6번의 평균 간격으로 다음 시작일 예측, 중심일 = 다음 시작 14일 전, 구간 = 중심일 5일 전 ~ 1일 후 */
+   최근 6개 주기 평균으로 다음 생리 예측, 배란일 = 다음 생리 14일 전, 가임기 = 배란일 5일 전 ~ 1일 후 */
 function makeEngine(logs, now = today()) {
   const dates = Object.keys(logs).filter(k => isRed(logs[k])).sort().map(dateOf);
   const runs = [];
@@ -284,7 +284,7 @@ function connectPartner(link) {
 
 /* ---------- 알림 (Cloudflare Worker + Web Push) ----------
    - 내 채널(data.notify): 내가 주인. 파트너 구독 + 내 예정일 알림 구독이 여기 붙음
-   - 빨간 날 기록이 바뀌면 /notify (파트너에게만, 서버가 10분에 1번으로 제한)
+   - 생리 기록이 바뀌면 /notify (파트너에게만, 서버가 10분에 1번으로 제한)
    - 예정일 알림 날짜는 내 폰이 계산해서 /schedule 로 보냄 (날짜와 종류만) */
 const NOTIFY = window.NOTIFY_CONFIG && window.NOTIFY_CONFIG.workerUrl ? window.NOTIFY_CONFIG : null;
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -410,14 +410,14 @@ const $ = id => document.getElementById(id);
 
 function statusHtml(e) {
   const t = today(), ph = e.phase(t);
-  if (ph.type === "none") return `<p class="status">날짜를 눌러 빨간 날을 기록하세요</p><p class="sub">기록이 쌓이면 다음 빨간 날과 초록 구간을 계산해요.</p>`;
+  if (ph.type === "none") return `<p class="status">생리한 날을 눌러 기록하세요</p><p class="sub">기록이 쌓이면 다음 생리일과 가임기를 계산해요.</p>`;
   const next = e.nextStart(t), w = e.zoneWindow(t);
-  const head = { red: `빨간 날 ${ph.n}일째`, late: `예정보다 ${ph.n}일 늦음`, mid: "오늘 초록 중심일", zone: "초록 구간",
-                 regular: next ? (diffDays(t, next) === 0 ? "오늘 빨간 날 예정" : `빨간 날까지 ${diffDays(t, next)}일`) : "" }[ph.type];
-  const parts = [`시작 후 ${e.dayCount(t)}일째`];
-  if (next) parts.push(`다음 빨간 날 ${md(next)}`);
-  if (w) parts.push(`초록 구간 ${short(w.start)}~${short(w.end)}`);
-  parts.push(`평균 간격 ${e.avgGap}일${e.usesDefault ? "(기본값)" : ""}`);
+  const head = { red: `생리 ${ph.n}일째`, late: `생리 예정일보다 ${ph.n}일 늦음`, mid: "오늘 배란 예정일", zone: "가임기",
+                 regular: next ? (diffDays(t, next) === 0 ? "오늘 생리 예정일" : `생리까지 ${diffDays(t, next)}일`) : "" }[ph.type];
+  const parts = [`주기 ${e.dayCount(t)}일째`];
+  if (next) parts.push(`다음 생리 ${md(next)}`);
+  if (w) parts.push(`가임기 ${short(w.start)}~${short(w.end)}`);
+  parts.push(`평균 주기 ${e.avgGap}일${e.usesDefault ? "(기본값)" : ""}`);
   return `<p class="status">${head}</p><p class="sub">${parts.join(" · ")}</p>`;
 }
 
@@ -437,8 +437,8 @@ function calendarHtml(scope, e, logs, editable) {
   }
   return `<div class="head"><button data-month="${scope}" data-delta="-1">‹</button><b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1">›</button></div>
     <div class="grid">${cells}</div>
-    <div class="legend"><span><i style="background:var(--red)"></i>빨간 날</span><span><i style="border:2px dashed var(--red)"></i>예정</span>
-    <span><i style="background:var(--zone)"></i>초록 구간</span><span><i style="border:2px solid var(--mid)"></i>중심일</span><span style="color:var(--red)">♥</span></div>`;
+    <div class="legend"><span><i style="background:var(--red)"></i>생리</span><span><i style="border:2px dashed var(--red)"></i>생리 예정</span>
+    <span><i style="background:var(--zone)"></i>가임기</span><span><i style="border:2px solid var(--mid)"></i>배란일</span><span style="color:var(--red)">♥ 관계</span></div>`;
 }
 
 function meView() {
@@ -448,35 +448,42 @@ function meView() {
   else share = `<p class="sub">공유 중 · 기록을 바꾸면 파트너 화면에 자동 반영돼요.${sync.error ? `<br>${sync.error}` : ""}</p>
     <div class="row"><input type="text" id="share-url" readonly value="${shareLink()}"><button data-action="share-send">보내기</button></div>
     <button class="danger" data-action="share-stop">공유 중지</button>`;
-  return statusHtml(engine) + calendarHtml("me", engine, data.logs, true) + `<section><h2>파트너와 공유</h2>${share}</section>` + notifySection("self");
+  return statusHtml(engine) + calendarHtml("me", engine, data.logs, true)
+    + `<section><h2>파트너와 공유</h2>${share}</section>`
+    + (NOTIFY ? `<section><h2>내 예정일 알림</h2>${notifyBody("self")}</section>` : "")
+    + partnerSection();
 }
 
-function notifySection(role) {
-  if (!NOTIFY) return "";
-  const title = role === "self" ? "내 예정일 알림" : "파트너 알림";
-  const desc = role === "self" ? "빨간 날 2일 전 · 예정일 · 초록 구간 시작일 오전 9시에 알려 드려요."
-                               : "파트너가 빨간 날 기록을 바꾸거나 파트너의 예정일이 다가오면 알려 드려요.";
-  let body;
-  if (!pushReady()) body = `<p class="sub">${desc}<br>홈 화면에 추가한 앱에서 켤 수 있어요 (iOS 16.4 이상).</p>`;
-  else if (role === "partner" && !(data.partner && data.partner.notifyId)) body = `<p class="sub">파트너 쪽에서 알림 기능이 아직 준비되지 않았어요.</p>`;
-  else {
-    const on = role === "self" ? !!data.pushSelf : !!data.pushPartner && data.pushPartner === data.partner.notifyId;
-    body = `<p class="sub">${desc}</p><div class="row"><button data-action="push-${role}" data-on="${on ? 1 : 0}">${on ? "알림 끄기" : "알림 받기"}</button></div>`;
-  }
-  return `<section><h2>${title}</h2>${body}</section>`;
-}
-
-function partnerView() {
-  if (!Cloud.configured) return `<p class="sub">파트너 공유를 쓰려면 firebase-config.js 설정이 필요해요.</p>`;
-  if (!data.partnerLink) return `<p class="status">파트너 캘린더 연결</p><p class="sub">파트너가 보낸 공유 링크를 붙여 넣으세요.</p>
-    <div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div>`;
+// 파트너 연결 · 파트너 알림 · 연결 끊기는 내 캘린더 탭 아래에 둠 (파트너 탭은 캘린더만)
+function partnerSection() {
+  if (!Cloud.configured) return "";
+  if (!data.partnerLink) return `<section><h2>파트너 캘린더</h2><p class="sub">파트너가 보낸 공유 링크를 붙여 넣으면 '파트너' 탭에서 볼 수 있어요.</p>
+    <div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div></section>`;
   const info = sync.gone ? "파트너가 공유를 중지했어요."
     : sync.error ? sync.error
     : !data.partner ? "불러오는 중…"
     : `${sync.live ? "실시간 연결됨" : "오프라인 · 마지막으로 받은 내용"} · ${fmtTime(data.partner.exportedAt)} 업데이트`;
-  return (partnerEngine ? statusHtml(partnerEngine) + calendarHtml("partner", partnerEngine, data.partner.logs, false) : "")
-    + (data.partner && !sync.gone ? notifySection("partner") : "")
-    + `<section><p class="sub">${info}</p><button class="danger" data-action="disconnect">연결 끊기</button></section>`;
+  return `<section><h2>파트너 캘린더</h2><p class="sub">${info}</p>`
+    + (NOTIFY && data.partner && !sync.gone ? notifyBody("partner") : "")
+    + `<button class="danger" data-action="disconnect">연결 끊기</button></section>`;
+}
+
+function notifyBody(role) {
+  const desc = role === "self" ? "생리 예정 2일 전 · 생리 예정일 · 가임기 시작일 오전 9시에 알려 드려요."
+                               : "파트너가 생리 기록을 바꾸거나 파트너의 생리 예정일·가임기가 다가오면 알려 드려요.";
+  if (!pushReady()) return `<p class="sub">${desc}<br>홈 화면에 추가한 앱에서 켤 수 있어요 (iOS 16.4 이상).</p>`;
+  if (role === "partner" && !(data.partner && data.partner.notifyId)) return `<p class="sub">파트너 쪽에서 알림 기능이 아직 준비되지 않았어요.</p>`;
+  const on = role === "self" ? !!data.pushSelf : !!data.pushPartner && data.pushPartner === data.partner.notifyId;
+  const label = role === "self" ? (on ? "알림 끄기" : "알림 받기") : (on ? "파트너 알림 끄기" : "파트너 알림 받기");
+  return `<p class="sub">${desc}</p><div class="row"><button data-action="push-${role}" data-on="${on ? 1 : 0}">${label}</button></div>`;
+}
+
+// 파트너 탭: 캘린더만
+function partnerView() {
+  if (data.partnerLink && partnerEngine && !sync.gone) return calendarHtml("partner", partnerEngine, data.partner.logs, false);
+  const msg = !Cloud.configured || !data.partnerLink ? "내 캘린더 탭 아래 '파트너 캘린더'에서 공유 링크를 연결하세요."
+    : sync.gone ? "파트너가 공유를 중지했어요." : "불러오는 중…";
+  return `<p class="sub">${msg}</p>`;
 }
 
 function render() {
@@ -521,7 +528,7 @@ document.addEventListener("click", async e => {
     case "connect": {
       const link = parseLink($("link-in").value);
       if (!link) { alert("공유 링크가 아니에요. 링크 전체를 붙여 넣어 주세요."); return; }
-      connectPartner(link); render(); break;
+      connectPartner(link); state.view = "partner"; render(); break;
     }
     case "disconnect":
       if (!confirm("파트너 캘린더 연결을 끊을까요?")) return;
