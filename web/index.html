@@ -205,6 +205,7 @@ function load() {
     const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!p) return base;
     const d = { ...base, ...p, logs: cleanLogs(p.logs), show: cleanShow(p.show) };
+    if (d.partner) d.partner = { ...d.partner, logs: cleanLogs(d.partner.logs), show: cleanShow(d.partner.show) };
     // 예전 방식(질문 없는 링크) 공유는 정리
     if (d.myShare && !d.myShare.salt) { oldShareId = d.myShare.id; d.myShare = null; }
     return d;
@@ -628,12 +629,17 @@ function slaveView() {
   if (!partnerEngine) return `<p class="center note">불러오는 중…</p>`;
   const nid = data.partner.notifyId;
   const askPush = NOTIFY && nid && pushReady() && data.pushPartner !== nid;
-  return calendarHtml("partner", partnerEngine, data.partner.logs, data.partner.show, false)
+  return calendarHtml("partner", partnerEngine, data.partner.logs, data.partner.show || SHOW_ALL, false)
     + (askPush ? `<div class="center"><button class="link" data-action="push-partner">알림 받기</button></div>` : "");
 }
 
 function render() {
-  $("view").innerHTML = state.join || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
+  try {
+    $("view").innerHTML = state.join || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
+  } catch (err) {
+    console.error(err);
+    $("view").innerHTML = `<p class="center note">화면을 그리지 못했어요. 새로고침해 주세요.</p>`;
+  }
 }
 function refresh() {
   const a = document.activeElement;
