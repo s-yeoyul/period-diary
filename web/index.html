@@ -125,7 +125,6 @@ svg{display:block}
 .bar{height:4px;border-radius:2px}
 .bar.period{background:var(--period)}
 .bar.plan{background:var(--plan)}
-.bar.maybe{background:var(--plan);height:2px;opacity:.45}
 .bar.fertile{background:var(--fertile)}
 .icons{display:flex;gap:2px;margin-top:3px;height:12px}
 .icons svg{width:12px;height:12px}
@@ -202,7 +201,7 @@ dialog::backdrop{background:rgba(0,0,0,.25)}
 /* ---------- 화면에 나오는 말 (둘만의 용어로 바꿀 땐 여기만) ----------
    알림 문구는 worker/src/index.js 의 MESSAGES */
 const T = {
-  period: "쥐구멍", periodOn: "쥐구멍 속", periodPlan: "쥐구멍 앞", periodDay: "쥐구멍 입장", periodMaybe: "쥐구멍 근처",
+  period: "쥐구멍", periodOn: "쥐구멍 속", periodPlan: "쥐구멍 앞", periodDay: "쥐구멍 입장",
   fertile: "꿀렁", ovulation: "알낳는날", sex: "쥐잡", shave: "털갈이", anniv: "기념일", master: "주인",
   slave: "쥐"             // 파트너(캘린더를 보는 쪽)
 };
@@ -836,7 +835,6 @@ function monthCells(m, e, logs, show, editable) {
     const bars = [];
     if (show.period && (isRed(l) || e.inferred.has(k))) bars.push("period");
     else if (show.plan && e.plan.has(k)) bars.push("plan");
-    else if (show.plan && e.maybe.has(k)) bars.push("maybe");
     if (show.fertile && e.fertile.has(k)) bars.push("fertile");
     const icons = [];
     if (show.ovul && e.ovul.has(k)) icons.push(`<span class="ic-ovul">${ICON.egg}</span>`);
@@ -855,8 +853,7 @@ function calendarHtml(scope, e, logs, show, editable) {
   const panel = (delta, cls) => `<div class="panel grid${cls}">${monthCells(new Date(y, mo + delta, 1), e, logs, show, editable)}</div>`;
   const lg = [], lgIcon = []; // 위: 막대 범례 / 아래: 아이콘 범례
   if (show.period) lg.push(`<span><i class="lb" style="background:var(--period)"></i>${T.periodOn}</span>`);
-  if (show.plan) lg.push(`<span><i class="lb" style="background:var(--plan)"></i>${T.periodPlan}</span>`,
-                         `<span><i class="lb" style="background:var(--plan);height:2px;opacity:.45"></i>${T.periodMaybe}</span>`);
+  if (show.plan) lg.push(`<span><i class="lb" style="background:var(--plan)"></i>${T.periodPlan}</span>`);
   if (show.fertile) lg.push(`<span><i class="lb" style="background:var(--fertile)"></i>${T.fertile}</span>`);
   if (show.ovul) lgIcon.push(`<span><span class="ic-ovul">${ICON.egg}</span>${T.ovulation}</span>`);
   if (show.sex) lgIcon.push(`<span><span class="ic-sex">${ICON.heart}</span>${T.sex}</span>`);
@@ -906,7 +903,7 @@ function slaveGroup() {
 }
 
 function showGroup() {
-  const items = [["period", T.period], ["plan", `${T.periodPlan} · ${T.periodMaybe}`], ["fertile", T.fertile], ["ovul", T.ovulation], ["sex", T.sex], ["shave", T.shave], ["anniv", T.anniv]];
+  const items = [["period", T.period], ["plan", T.periodPlan], ["fertile", T.fertile], ["ovul", T.ovulation], ["sex", T.sex], ["shave", T.shave], ["anniv", T.anniv]];
   return `<div class="group"><h2>${T.slave}에게 보여줄 것</h2>
     ${items.map(([k, label]) => `<label class="row"><span class="t">${label}</span><input type="checkbox" class="switch" data-show="${k}" ${data.show[k] ? "checked" : ""}></label>`).join("")}</div>`;
 }
