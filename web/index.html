@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/icon-192.png">
 <title>캘린더</title>
 <style>
-/* 폰트: 제목 WatermelonYang, 내용 히피체 (눈누) */
+/* 폰트: 제목 히피체, 내용 WatermelonYang (눈누) */
 @font-face{font-family:'WatermelonYang';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2') format('woff2');font-weight:normal;font-display:swap}
 @font-face{font-family:'Hippie';src:url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2') format('woff2');font-weight:400;font-display:swap}
 
@@ -35,7 +35,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hippie',-apple-system,system-ui,sans-serif;font-size:16px;line-height:1.5;
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'WatermelonYang',-apple-system,system-ui,sans-serif;font-size:16px;line-height:1.5;
   padding:calc(env(safe-area-inset-top) + 24px) 16px calc(env(safe-area-inset-bottom) + 40px)}
 .wrap{max-width:440px;margin:0 auto}
 button,input{font:inherit;color:inherit}
@@ -45,7 +45,7 @@ svg{display:block}
 /* 캘린더 */
 .cal{touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .cal-head{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
-.cal-head b{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:40px;line-height:1;min-width:3.2em;text-align:center}
+.cal-head b{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:40px;line-height:1;min-width:3.2em;text-align:center}
 .cal-head button{width:36px;height:36px;display:grid;place-items:center;color:var(--ink)}
 .cal-head svg{width:20px;height:20px}
 .grid{display:grid;grid-template-columns:repeat(7,1fr)}
@@ -77,7 +77,7 @@ svg{display:block}
 
 /* 설정 */
 .group{margin-top:34px}
-.group h2{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:22px;margin:0 0 8px}
+.group h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:22px;margin:0 0 8px}
 .row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .row:last-child{border-bottom:1px solid var(--line)}
 .row .t{flex:1;min-width:0}
@@ -94,7 +94,7 @@ svg{display:block}
 
 /* 첫 화면 */
 .gate{padding-top:16vh;text-align:center}
-.gate h1{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:44px;margin:0 0 8px}
+.gate h1{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:44px;margin:0 0 8px}
 .gate p{color:var(--sub);margin:0 0 24px}
 .gate .stack{max-width:300px;margin:0 auto}
 /* 암호 칸: type=password 는 아이폰에서 한글 입력이 막혀서 일반 칸 + 글자 가리기 */
@@ -109,7 +109,7 @@ dialog[open]{animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(40px)}to{transform:none}}
 dialog::backdrop{background:rgba(0,0,0,.25)}
 .sheet-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-.sheet-head b{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:26px}
+.sheet-head b{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:26px}
 .sheet-head small{display:block;color:var(--sub);font-size:14px}
 </style>
 </head>
@@ -132,7 +132,8 @@ dialog::backdrop{background:rgba(0,0,0,.25)}
    알림 문구는 worker/src/index.js 의 MESSAGES */
 const T = {
   period: "생리", periodOn: "생리 중", periodPlan: "생리 예정", periodMaybe: "예정 범위",
-  fertile: "가임기", ovulation: "배란일", sex: "관계", shave: "제모", anniv: "기념일"
+  fertile: "가임기", ovulation: "배란일", sex: "관계", shave: "제모", anniv: "기념일",
+  slave: "쥐"             // 파트너(캘린더를 보는 쪽)
 };
 
 /* ---------- 설정값 ----------
@@ -581,7 +582,7 @@ function calendarHtml(scope, e, logs, show, editable) {
   if (show.shave) lg.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
   return `<div class="cal" data-scope="${scope}">
     <div class="cal-head"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button>
-      <b>${mo + 1}월</b><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
+      <b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
     <div class="grid">${cells}</div>
     <div class="legend">${lg.join("")}</div></div>`;
 }
@@ -604,18 +605,18 @@ function masterView() {
 
 function slaveGroup() {
   if (!Cloud.configured) return "";
-  if (!data.myShare) return `<div class="group"><h2>슬레이브 연결</h2>
-    <p class="note">질문과 답을 정하면 초대 링크가 만들어져요. 슬레이브는 링크를 열고 답을 맞혀야 연결돼요.</p>
+  if (!data.myShare) return `<div class="group"><h2>${T.slave} 연결</h2>
+    <p class="note">질문과 답을 정하면 초대 링크가 만들어져요. ${T.slave} 폰에서 링크를 열고 답을 맞혀야 연결돼요.</p>
     <div class="stack"><input class="field" id="q-in" maxlength="40" placeholder="질문" autocomplete="off"><input class="field" id="a-in" maxlength="10" placeholder="답 (10자 이내)" autocomplete="off">
     <button class="btn" data-action="share-create" ${state.busy ? "disabled" : ""}>${state.busy ? "만드는 중…" : "초대 링크 만들기"}</button></div></div>`;
-  return `<div class="group"><h2>슬레이브 연결</h2>
-    <div class="row"><span class="t">질문: ${esc(data.myShare.question)}<small>${esc(sync.error) || "기록하면 슬레이브 화면에 바로 반영돼요"}</small></span><button class="btn" data-action="share-send">링크 보내기</button></div>
-    <div class="row"><span class="t">연결 끊기<small>지금 슬레이브는 더 이상 볼 수 없어요</small></span><button class="link" data-action="share-stop">끊기</button></div></div>`;
+  return `<div class="group"><h2>${T.slave} 연결</h2>
+    <div class="row"><span class="t">질문: ${esc(data.myShare.question)}<small>${esc(sync.error) || `기록하면 ${T.slave} 화면에 바로 반영돼요`}</small></span><button class="btn" data-action="share-send">링크 보내기</button></div>
+    <div class="row"><span class="t">연결 끊기<small>지금 연결된 ${T.slave} 폰에서는 더 이상 볼 수 없어요</small></span><button class="link" data-action="share-stop">끊기</button></div></div>`;
 }
 
 function showGroup() {
   const items = [["period", T.period], ["plan", `${T.periodPlan} · ${T.periodMaybe}`], ["fertile", T.fertile], ["ovul", T.ovulation], ["sex", T.sex], ["shave", T.shave], ["anniv", T.anniv]];
-  return `<div class="group"><h2>슬레이브에게 보여줄 것</h2>
+  return `<div class="group"><h2>${T.slave}에게 보여줄 것</h2>
     ${items.map(([k, label]) => `<label class="row"><span class="t">${label}</span><input type="checkbox" class="switch" data-show="${k}" ${data.show[k] ? "checked" : ""}></label>`).join("")}</div>`;
 }
 
@@ -690,7 +691,7 @@ document.addEventListener("click", async e => {
       return;
     }
     case "share-stop":
-      if (!confirm("연결을 끊을까요? 새 슬레이브를 연결하려면 초대 링크를 다시 만들어야 해요.")) return;
+      if (!confirm("연결을 끊을까요? 다시 연결하려면 초대 링크를 새로 만들어야 해요.")) return;
       await stopShare(); render(); return;
     case "push-partner":
       el.disabled = true;
@@ -759,8 +760,8 @@ function handleHash() {
   if (data.mode === "partner" && data.partnerLink && data.partnerLink.id === join.id) return;
   if (data.mode === "me" && !PROFILE) {
     // 마스터 기기가 실수로 슬레이브가 되지 않게
-    if (data.myShare && data.myShare.id === join.id) { alert("마스터 기기에서 연 내 초대 링크예요. 슬레이브 폰에서 열어 주세요."); return; }
-    if (!confirm("이 기기를 슬레이브로 바꿀까요? 이 기기의 마스터 기록은 지워지지 않아요.")) return;
+    if (data.myShare && data.myShare.id === join.id) { alert(`마스터 기기에서 연 내 초대 링크예요. ${T.slave} 폰에서 열어 주세요.`); return; }
+    if (!confirm(`이 기기를 ${T.slave} 화면으로 바꿀까요? 이 기기의 마스터 기록은 지워지지 않아요.`)) return;
   }
   state.join = join; state.gateError = ""; render();
 }
