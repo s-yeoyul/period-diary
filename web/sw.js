@@ -12,7 +12,7 @@ const FONTS = [
 
 self.addEventListener("install", e => {
   e.waitUntil(Promise.all([
-    caches.open(VERSION).then(c => c.addAll(ASSETS)),
+    caches.open(VERSION).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: "reload" })))), // 브라우저 임시 보관 말고 서버의 최신 파일
     // 글꼴 미리 저장 (실패해도 설치는 계속)
     caches.open(FONT_CACHE).then(c => Promise.all(FONTS.map(u => c.match(u).then(hit => hit || c.add(new Request(u, { mode: "cors" })))))).catch(() => {})
   ]).then(() => self.skipWaiting()));
@@ -24,7 +24,9 @@ self.addEventListener("activate", e => {
     .then(() => self.clients.claim()));
 });
 
-// 네트워크 우선, 실패하면 캐시. cache:"no-cache" = 브라우저의 10분 임시 보관을 건너뛰고 서버에 새 버전 확인
+// 앱 파일: 저장해 둔 것을 바로 꺼내 줌 (흰 화면 없이 즉시 열림) + 뒤에서 서버의 새 파일로 바꿔 둠
+// 새로 배포하면 sw.js 가 바뀌어 새 서비스워커가 깔리고, 앱을 막 연 참이면 바로 새로 불러옴
+// 저장된 게 없을 때(처음 열 때)만 네트워크를 기다림. cache:"no-cache" = 브라우저의 10분 임시 보관을 건너뜀
 self.addEventListener("fetch", e => {
   const req = e.request;
   // 글꼴: 저장된 게 있으면 바로, 없으면 받아서 저장
@@ -36,13 +38,13 @@ self.addEventListener("fetch", e => {
     return;
   }
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
-  e.respondWith(
-    fetch(req, { cache: "no-cache" }).then(res => {
-      const copy = res.clone();
-      caches.open(VERSION).then(c => c.put(req, copy));
-      return res;
-    }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match("./index.html")))
-  );
+  const fresh = fetch(req, { cache: "no-cache" }).then(res => {
+    if (res.ok) { const copy = res.clone(); e.waitUntil(caches.open(VERSION).then(c => c.put(req, copy))); }
+    return res;
+  });
+  const saved = caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === "navigate" ? caches.match("./index.html") : undefined));
+  e.respondWith(saved.then(r => r || fresh).catch(() => saved));
+  e.waitUntil(fresh.catch(() => {}));
 });
 
 // 푸시 알림 받기

@@ -21,13 +21,18 @@
       { family: "Hippie", url: "https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2", size: 4114752, got: 0 },
       { family: "WatermelonYang", url: "https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2", size: 602188, got: 0 }
     ];
-    var done = false;
-    function finish() { if (done) return; done = true; document.documentElement.classList.remove("fonts-wait"); }
+    var done = false, fontsDone = false;
+    function reveal() { if (done || !fontsDone || !window.__rendered) return; done = true; document.documentElement.classList.remove("fonts-wait"); }
+    function finish() { fontsDone = true; reveal(); }
+    window.__reveal = reveal;
     function show() {
       var total = 0, got = 0;
       FONTS.forEach(function (f) { total += f.size; got += Math.min(f.got, f.size); });
       var el = document.getElementById("loading-pct");
-      if (el) el.textContent = Math.min(99, Math.floor(got / total * 100)) + "%";
+      var pct = Math.min(99, Math.floor(got / total * 100));
+      if (el) el.textContent = pct + "%";
+      var bar = document.getElementById("loading-fill");
+      if (bar) bar.style.width = pct + "%";
     }
     function load(f) {
       return fetch(f.url, { mode: "cors" }).then(function (res) {
@@ -51,7 +56,7 @@
         return face.load().then(function () { document.fonts.add(face); });
       });
     }
-    setTimeout(finish, 10000);
+    setTimeout(function () { finish(); window.__rendered = true; reveal(); }, 10000);
     if (!window.fetch || !window.FontFace) { finish(); return; }
     Promise.all(FONTS.map(load)).then(finish, finish);
   })();
@@ -60,7 +65,10 @@
 html.fonts-wait .wrap{visibility:hidden}
 #loading{display:none}
 #loading-pct{margin-left:.4em;font-variant-numeric:tabular-nums}
-html.fonts-wait #loading{display:flex;position:fixed;inset:0;align-items:center;justify-content:center;color:#8C8C8C;font:15px -apple-system,system-ui,sans-serif;letter-spacing:.02em}
+html{background:#FCFCFC}
+html.fonts-wait #loading{display:flex;flex-direction:column;gap:12px;position:fixed;inset:0;align-items:center;justify-content:center;color:#8C8C8C;font:15px -apple-system,system-ui,sans-serif;letter-spacing:.02em}
+#loading .bar{width:140px;height:4px;border-radius:2px;background:#EEEEEE;overflow:hidden}
+#loading-fill{display:block;width:0;height:100%;background:#8C8C8C;border-radius:2px;transition:width .15s}
 /* 폰트: 제목 히피체, 내용 WatermelonYang (눈누) — 위 스크립트가 받아서 등록 */
 
 /* 색 */
@@ -176,7 +184,7 @@ dialog::backdrop{background:rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
-<div id="loading">로딩 중 . . . <span id="loading-pct">0%</span></div>
+<div id="loading"><div>로딩 중 . . . <span id="loading-pct">0%</span></div><div class="bar"><i id="loading-fill"></i></div></div>
 <div class="wrap"><div id="view"></div></div>
 
 <dialog id="day">
@@ -1134,10 +1142,13 @@ navigator.serviceWorker?.addEventListener("message", () => { rebuild(); render()
 
 rebuild();
 render();
+window.__rendered = true; window.__reveal && window.__reveal();
 handleHash();
 catchUp();
 watchPartner();
 navigator.storage?.persist?.().catch(() => {});
+{ const hadSW = !!navigator.serviceWorker?.controller, t0 = Date.now();
+  navigator.serviceWorker?.addEventListener("controllerchange", () => { if (hadSW && Date.now() - t0 < 4000 && !$("day").open) location.reload(); }); }
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 </script>
 </body>
