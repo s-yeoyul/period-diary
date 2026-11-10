@@ -10,44 +10,113 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>캘린더</title>
+<meta name="theme-color" content="#F7F5F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141312" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-:root{--bg:#fff;--text:#111;--sub:#888;--line:#e5e5e5;--red:#e5484d;--zone:#d6f0ee;--mid:#2a9d8f;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#111;--text:#eee;--sub:#888;--line:#2a2a2a;--zone:#1d3b38;color-scheme:dark}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,system-ui,sans-serif;
-  padding:env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom))}
-.wrap{max-width:480px;margin:0 auto}
-button{font:inherit;color:inherit;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
-input[type=text]{font:inherit;font-size:16px;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
-#view{padding-top:20px}
-.status{font-size:20px;font-weight:700;margin:0}
-.sub{color:var(--sub);font-size:14px;margin:4px 0 0}
-.head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px}
-.head b{font-size:17px}
-.head button{border:0;font-size:20px;padding:4px 12px}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
-.wd{font-size:12px;color:var(--sub);padding:4px 0}
-.day{border:0;padding:2px 0;height:48px;display:flex;flex-direction:column;align-items:center;border-radius:0}
-.day .n{width:34px;height:34px;line-height:30px;border-radius:50%;border:2px solid transparent;font-size:15px}
-.day .h{font-size:9px;line-height:10px;height:10px;color:var(--red)}
-.day.today .n{font-weight:800;text-decoration:underline}
-.day.zone .n{background:var(--zone)}
-.day.mid .n{border-color:var(--mid)}
-.day.plan .n{border:2px dashed var(--red)}
-.day.red .n{background:var(--red);border-color:var(--red);color:#fff}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sub);margin:8px 0 0}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
-section{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}
-section h2{font-size:15px;margin:0 0 8px}
-.row{display:flex;gap:8px;margin-top:8px}
-.row input{flex:1}
-.danger{color:var(--red);border:0;padding:8px 0}
-dialog{border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);padding:20px;width:min(320px,90vw)}
-dialog::backdrop{background:rgba(0,0,0,.3)}
-dialog h3{margin:0 0 12px}
-.check{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:17px;border-bottom:1px solid var(--line)}
-.check input{width:22px;height:22px;accent-color:var(--red)}
-dialog .row button{flex:1}
+:root{
+  --bg:#F7F5F2; --surface:#FFFFFF; --ink:#1F1D1B; --ink2:#6F6A64; --ink3:#A9A39C; --line:#ECE8E2;
+  --period:#D94A5B; --period-soft:#F9E3E6; --fertile-soft:#E3EEE7; --ovul:#3E8A68;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141312; --surface:#1E1C1A; --ink:#F2EFEA; --ink2:#A39D95; --ink3:#6E6962; --line:#2C2926;
+  --period:#E2606F; --period-soft:#3B2328; --fertile-soft:#1E2F26; --ovul:#6DBB93;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:16px;line-height:1.5;letter-spacing:-0.01em;
+  padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 40px)}
+.wrap{max-width:440px;margin:0 auto}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;letter-spacing:inherit}
+svg{display:block}
+
+/* 상단 요약 */
+.hero{padding:0 4px}
+.hero .label{font-size:15px;font-weight:500;color:var(--ink2)}
+.hero .value{font-size:60px;font-weight:700;letter-spacing:-0.045em;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
+.hero .value small{font-size:24px;font-weight:600;letter-spacing:-0.02em;margin-left:3px}
+.hero .value.text{font-size:36px;letter-spacing:-0.035em;margin-top:6px}
+.hero .note{font-size:14px;color:var(--ink2);margin-top:10px}
+.stats{display:grid;grid-template-columns:1fr 1.25fr 1fr;margin:26px 0 18px;padding:0 4px}
+.stats>div+div{border-left:1px solid var(--line);padding-left:14px}
+.stats .k{font-size:12px;color:var(--ink3)}
+.stats .v{font-size:15px;font-weight:600;margin-top:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stats .v em{font-style:normal;font-weight:500;color:var(--ink3);font-size:12px;margin-left:3px}
+
+/* 캘린더 */
+.card{background:var(--surface);border-radius:22px;padding:16px 12px 14px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px 10px}
+.cal-head b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.nav{display:flex;gap:2px}
+.nav button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink2)}
+.nav button:active{background:var(--line)}
+.nav svg{width:18px;height:18px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.wd{font-size:12px;font-weight:500;color:var(--ink3);text-align:center;padding:4px 0 6px}
+.day{height:52px;display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:2px}
+.day .n{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-variant-numeric:tabular-nums}
+.day .i{height:7px;display:flex;gap:3px;align-items:center}
+.day .i svg{width:8px;height:8px;color:var(--period)}
+.day .i .dot{width:4px;height:4px;border-radius:50%;background:var(--ink)}
+.day.today .n{font-weight:700}
+.day.zone .n{background:var(--fertile-soft)}
+.day.ovul .n{background:var(--fertile-soft);box-shadow:inset 0 0 0 1.5px var(--ovul)}
+.day.plan .n{background:var(--period-soft);color:var(--period)}
+.day.period .n{background:var(--period);color:#fff;font-weight:600}
+.day:disabled{cursor:default;color:inherit}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2);margin:6px 6px 0;padding-top:12px;border-top:1px solid var(--line)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.legend svg{width:9px;height:9px;color:var(--period)}
+
+/* 설정 목록 */
+.group{margin-top:28px}
+.group h2{font-size:13px;font-weight:600;color:var(--ink2);margin:0 0 8px 8px}
+.list{background:var(--surface);border-radius:18px;padding:0 16px}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;min-height:62px}
+.item+.item{border-top:1px solid var(--line)}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-size:15px;font-weight:600}
+.item .t span{display:block;font-size:13px;color:var(--ink2);margin-top:1px}
+.pill{height:34px;padding:0 15px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap}
+.textbtn{font-size:14px;font-weight:600;color:var(--period);white-space:nowrap;padding:8px 0}
+.switch{appearance:none;-webkit-appearance:none;width:50px;height:30px;border-radius:999px;background:var(--line);position:relative;flex:none;margin:0;cursor:pointer;transition:background .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.switch:checked{background:var(--period)}
+.switch:checked::after{transform:translateX(20px)}
+.switch:disabled{opacity:.5}
+
+/* 입력 */
+.field{display:flex;gap:8px;margin-top:12px}
+.field input{flex:1;min-width:0;height:46px;border:0;border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px;padding:0 14px}
+.field input::placeholder{color:var(--ink3)}
+.field .pill{height:46px;padding:0 18px}
+
+/* 처음 화면 · 안내 */
+.welcome{padding-top:14vh}
+.welcome h1{font-size:32px;font-weight:700;letter-spacing:-0.035em;margin:0}
+.welcome p{color:var(--ink2);margin:6px 0 32px}
+.welcome .start{height:52px;width:100%;font-size:16px}
+.or{display:flex;align-items:center;gap:12px;color:var(--ink3);font-size:13px;margin:32px 0 2px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.msg{color:var(--ink2);font-size:14px;padding:8px 4px}
+.center{text-align:center;margin-top:18px}
+
+/* 날짜 기록 시트 */
+dialog{border:0;margin:auto auto 0;width:100%;max-width:480px;background:var(--bg);color:var(--ink);
+  border-radius:24px 24px 0 0;padding:10px 20px calc(env(safe-area-inset-bottom) + 24px)}
+dialog[open]{animation:up .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(40px)}to{transform:none}}
+dialog::backdrop{background:rgba(20,18,16,.32)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin:0 4px 14px}
+.sheet-head b{font-size:20px;font-weight:700;letter-spacing:-0.02em}
+.sheet-head button{font-size:15px;font-weight:600;color:var(--period);padding:6px 0}
 </style>
 </head>
 <body>
@@ -56,10 +125,12 @@ dialog .row button{flex:1}
 </div>
 
 <dialog id="day">
-  <h3 id="day-title"></h3>
-  <label class="check"><input type="checkbox" id="chk-red"> 생리 중</label>
-  <label class="check"><input type="checkbox" id="chk-heart"> 관계</label>
-  <div class="row"><button id="day-close">닫기</button></div>
+  <div class="grab"></div>
+  <div class="sheet-head"><b id="day-title"></b><button id="day-close">완료</button></div>
+  <div class="list">
+    <label class="item"><span class="t"><b id="lbl-period"></b></span><input type="checkbox" class="switch" id="chk-red"></label>
+    <label class="item"><span class="t"><b id="lbl-sex"></b></span><input type="checkbox" class="switch" id="chk-heart"></label>
+  </div>
 </dialog>
 
 <script src="firebase-config.js"></script>
@@ -398,21 +469,52 @@ function notifyError(e) {
   return "알림을 켜지 못했어요. 인터넷 연결을 확인해 주세요.";
 }
 
-/* ---------- 화면 ---------- */
-const state = { view: "me", month: { me: today(), partner: today() }, dayKey: null };
-const $ = id => document.getElementById(id);
+/* ---------- 화면에 나오는 말 ----------
+   둘만의 용어로 바꿀 땐 여기만 고치면 돼요. (알림 문구는 worker/src/index.js 의 MESSAGES) */
+const T = {
+  period: "생리",          // 다음 생리, 생리까지
+  periodOn: "생리 중",     // 날짜 기록 스위치
+  periodPlan: "생리 예정", // 캘린더 범례, 생리 예정일
+  sex: "관계",             // 날짜 기록 스위치, 범례
+  fertile: "가임기",
+  ovulation: "배란일",
+  cycle: "주기"
+};
 
-function statusHtml(e) {
+/* ---------- 화면 ---------- */
+const state = { month: { me: today(), partner: today() }, dayKey: null };
+const $ = id => document.getElementById(id);
+const dot = d => `${d.getMonth() + 1}.${d.getDate()}`;
+const ICON = {
+  left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
+  right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.2s-7.6-4.7-9.6-9.4C1 8.4 3.2 4.8 6.8 4.8c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.6 0 5.8 3.6 4.4 7-2 4.7-9.6 9.4-9.6 9.4z"/></svg>`
+};
+
+function heroHtml(e) {
   const t = today(), ph = e.phase(t);
-  if (ph.type === "none") return `<p class="status">생리한 날을 눌러 기록하세요</p><p class="sub">기록이 쌓이면 다음 생리일과 가임기를 계산해요.</p>`;
-  const next = e.nextStart(t), w = e.zoneWindow(t);
-  const head = { red: `생리 ${ph.n}일째`, late: `생리 예정일보다 ${ph.n}일 늦음`, mid: "오늘 배란 예정일", zone: "가임기",
-                 regular: next ? (diffDays(t, next) === 0 ? "오늘 생리 예정일" : `생리까지 ${diffDays(t, next)}일`) : "" }[ph.type];
-  const parts = [`주기 ${e.dayCount(t)}일째`];
-  if (next) parts.push(`다음 생리 ${md(next)}`);
-  if (w) parts.push(`가임기 ${short(w.start)}~${short(w.end)}`);
-  parts.push(`평균 주기 ${e.avgGap}일${e.usesDefault ? "(기본값)" : ""}`);
-  return `<p class="status">${head}</p><p class="sub">${parts.join(" · ")}</p>`;
+  if (ph.type === "none") return `<div class="hero"><div class="value text">첫 기록을 남겨 주세요</div>
+    <div class="note">날짜를 눌러 기록하면 예측을 시작해요.</div></div>`;
+  const next = e.nextStart(t), w = e.zoneWindow(t), nd = next ? diffDays(t, next) : null;
+  let label, value, unit = "", text = false;
+  switch (ph.type) {
+    case "red": label = T.periodOn; value = ph.n; unit = "일째"; break;
+    case "late": label = "예정일보다"; value = ph.n; unit = "일 늦어요"; break;
+    case "mid": label = "오늘은"; value = T.ovulation; text = true; break;
+    case "zone": label = "지금은"; value = T.fertile; text = true; break;
+    default:
+      if (nd === 0) { label = "오늘은"; value = `${T.periodPlan}일`; text = true; }
+      else { label = `${T.period}까지`; value = nd; unit = "일"; }
+  }
+  const stats = [
+    [`다음 ${T.period}`, next ? `${next.getMonth() + 1}월 ${next.getDate()}일` : "–"],
+    [T.fertile, w ? `${dot(w.start)} – ${dot(w.end)}` : "–"],
+    [`평균 ${T.cycle}`, `${e.avgGap}일${e.usesDefault ? "<em>기본</em>" : ""}`]
+  ];
+  return `<div class="hero"><div class="label">${label}</div>
+      <div class="value${text ? " text" : ""}">${value}${unit ? `<small>${unit}</small>` : ""}</div>
+      <div class="note">${T.cycle} ${e.dayCount(t)}일째</div></div>
+    <div class="stats">${stats.map(([k, v]) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>`;
 }
 
 function calendarHtml(scope, e, logs, editable) {
@@ -420,60 +522,67 @@ function calendarHtml(scope, e, logs, editable) {
   let cells = WD.map(w => `<div class="wd">${w}</div>`).join("");
   for (let i = 0; i < new Date(y, mo, 1).getDay(); i++) cells += "<div></div>";
   for (let d = 1; d <= new Date(y, mo + 1, 0).getDate(); d++) {
-    const date = new Date(y, mo, d), k = keyOf(date), l = logs[k];
+    const date = new Date(y, mo, d), k = keyOf(date), l = logs[k], isToday = diffDays(date, t) === 0;
     const c = ["day"];
-    if (isRed(l)) c.push("red");
+    if (isRed(l)) c.push("period");
     else if (e.plan.has(k)) c.push("plan");
-    else if (e.mid.has(k)) c.push("mid");
+    else if (e.mid.has(k)) c.push("ovul");
     else if (e.zone.has(k)) c.push("zone");
-    if (diffDays(date, t) === 0) c.push("today");
-    cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"}><span class="n">${d}</span><span class="h">${l && l.h ? "♥" : ""}</span></button>`;
+    if (isToday) c.push("today");
+    const marks = (isToday ? `<span class="dot"></span>` : "") + (l && l.h ? ICON.heart : "");
+    cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"} aria-label="${mo + 1}월 ${d}일"><span class="n">${d}</span><span class="i">${marks}</span></button>`;
   }
-  return `<div class="head"><button data-month="${scope}" data-delta="-1">‹</button><b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1">›</button></div>
+  return `<div class="card">
+    <div class="cal-head"><b>${y}년 ${mo + 1}월</b>
+      <div class="nav"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div></div>
     <div class="grid">${cells}</div>
-    <div class="legend"><span><i style="background:var(--red)"></i>생리</span><span><i style="border:2px dashed var(--red)"></i>생리 예정</span>
-    <span><i style="background:var(--zone)"></i>가임기</span><span><i style="border:2px solid var(--mid)"></i>배란일</span><span style="color:var(--red)">♥ 관계</span></div>`;
+    <div class="legend">
+      <span><i style="background:var(--period)"></i>${T.period}</span>
+      <span><i style="background:var(--period-soft)"></i>${T.periodPlan}</span>
+      <span><i style="background:var(--fertile-soft)"></i>${T.fertile}</span>
+      <span><i style="background:var(--fertile-soft);box-shadow:inset 0 0 0 1.5px var(--ovul)"></i>${T.ovulation}</span>
+      <span>${ICON.heart}${T.sex}</span>
+    </div></div>`;
 }
 
 function meView() {
-  let share;
-  if (!Cloud.configured) share = `<p class="sub">파트너 공유를 쓰려면 firebase-config.js 설정이 필요해요.</p>`;
-  else if (!data.myShare) share = `<p class="sub">링크를 받은 파트너는 내 캘린더를 실시간으로 볼 수 있어요.</p><div class="row"><button data-action="share-create">공유 링크 만들기</button></div>`;
-  else share = `<p class="sub">공유 중 · 기록을 바꾸면 파트너 화면에 자동 반영돼요.${sync.error ? `<br>${sync.error}` : ""}</p>
-    <div class="row"><input type="text" id="share-url" readonly value="${shareLink()}"><button data-action="share-send">보내기</button></div>
-    <button class="danger" data-action="share-stop">공유 중지</button>`;
-  return statusHtml(engine) + calendarHtml("me", engine, data.logs, true)
-    + `<section><h2>파트너와 공유</h2>${share}</section>`
-    + (NOTIFY ? `<section><h2>내 예정일 알림</h2>${notifyBody("self")}</section>` : "");
+  return heroHtml(engine) + calendarHtml("me", engine, data.logs, true) + shareGroup() + notifyGroup();
 }
 
-function notifyBody(role) {
-  const desc = role === "self" ? "생리 예정 2일 전 · 생리 예정일 · 가임기 시작일 오전 9시에 알려 드려요."
-                               : "파트너가 생리 기록을 바꾸거나 파트너의 생리 예정일·가임기가 다가오면 알려 드려요.";
-  if (!pushReady()) return `<p class="sub">${desc}<br>홈 화면에 추가한 앱에서 켤 수 있어요 (iOS 16.4 이상).</p>`;
-  if (role === "partner" && !(data.partner && data.partner.notifyId)) return `<p class="sub">파트너 쪽에서 알림 기능이 아직 준비되지 않았어요.</p>`;
-  const on = role === "self" ? !!data.pushSelf : !!data.pushPartner && data.pushPartner === data.partner.notifyId;
-  const label = role === "self" ? (on ? "알림 끄기" : "알림 받기") : (on ? "파트너 알림 끄기" : "파트너 알림 받기");
-  return `<p class="sub">${desc}</p><div class="row"><button data-action="push-${role}" data-on="${on ? 1 : 0}">${label}</button></div>`;
+function shareGroup() {
+  if (!Cloud.configured) return "";
+  const items = !data.myShare
+    ? `<div class="item"><div class="t"><b>공유 링크</b><span>파트너가 실시간으로 볼 수 있어요</span></div><button class="pill" data-action="share-create">만들기</button></div>`
+    : `<div class="item"><div class="t"><b>공유 중</b><span>${sync.error || "기록하면 파트너 화면에 바로 반영돼요"}</span></div><button class="pill" data-action="share-send">링크 보내기</button></div>
+       <div class="item"><div class="t"><b>공유 중지</b><span>파트너가 더 이상 볼 수 없어요</span></div><button class="textbtn" data-action="share-stop">중지</button></div>`;
+  return `<div class="group"><h2>파트너</h2><div class="list">${items}</div></div>`;
+}
+
+function notifyGroup() {
+  if (!NOTIFY) return "";
+  const ready = pushReady();
+  const desc = ready ? `오전 9시에 ${T.period}·${T.fertile} 일정을 알려 드려요` : "홈 화면에 추가한 앱에서 켤 수 있어요";
+  return `<div class="group"><h2>알림</h2><div class="list"><label class="item"><span class="t"><b>예정일 알림</b><span>${desc}</span></span>
+    ${ready ? `<input type="checkbox" class="switch" data-push="self" ${data.pushSelf ? "checked" : ""}>` : ""}</label></div></div>`;
 }
 
 // 처음 여는 화면: 어떻게 쓸지 고르기
 function welcomeView() {
-  return `<p class="status">캘린더</p>
-    <div class="row"><button data-action="mode-me">내 캘린더 쓰기</button></div>
-    <section><h2>파트너 캘린더 보기</h2><p class="sub">받은 공유 링크를 붙여 넣으세요.</p>${linkInput()}</section>`;
+  return `<div class="welcome"><h1>캘린더</h1><p>이 기기에서 어떻게 쓸지 골라 주세요.</p>
+    <button class="pill start" data-action="mode-me">내 캘린더 시작하기</button>
+    <div class="or">또는 받은 공유 링크로 보기</div>${linkInput()}</div>`;
 }
-const linkInput = () => `<div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div>`;
+const linkInput = () => `<div class="field"><input type="text" id="link-in" placeholder="공유 링크 붙여넣기" autocomplete="off"><button class="pill" data-action="connect">연결</button></div>`;
 
 // 파트너 화면: 공유받은 캘린더만 (알림은 켜기 전까지만 버튼 하나 표시)
 function partnerView() {
-  if (!Cloud.configured) return `<p class="sub">설정이 필요해요.</p>`;
-  if (!data.partnerLink || sync.gone) return `<p class="sub">${sync.gone ? "공유가 중지됐어요. 새 링크를 받았다면 붙여 넣으세요." : "받은 공유 링크를 붙여 넣으세요."}</p>${linkInput()}`;
-  if (!partnerEngine) return `<p class="sub">불러오는 중…</p>`;
+  if (!Cloud.configured) return `<p class="msg">설정이 필요해요.</p>`;
+  if (!data.partnerLink || sync.gone) return `<p class="msg">${sync.gone ? "공유가 중지됐어요. 새 링크를 받았다면 붙여 넣어 주세요." : "받은 공유 링크를 붙여 넣어 주세요."}</p>${linkInput()}`;
+  if (!partnerEngine) return `<p class="msg">불러오는 중…</p>`;
   const nid = data.partner.notifyId;
   const askPush = NOTIFY && nid && pushReady() && data.pushPartner !== nid;
   return calendarHtml("partner", partnerEngine, data.partner.logs, false)
-    + (askPush ? `<div class="row" style="margin-top:20px"><button data-action="push-partner" data-on="0">알림 받기</button></div>` : "");
+    + (askPush ? `<div class="center"><button class="textbtn" data-action="push-partner" data-on="0">알림 받기</button></div>` : "");
 }
 
 function render() {
@@ -504,7 +613,7 @@ document.addEventListener("click", async e => {
     case "share-send": {
       const url = shareLink();
       if (navigator.share) navigator.share({ url }).catch(() => {});
-      else { $("share-url").select(); navigator.clipboard?.writeText(url).then(() => alert("링크를 복사했어요."), () => document.execCommand("copy")); }
+      else navigator.clipboard?.writeText(url).then(() => alert("링크를 복사했어요."), () => prompt("링크를 복사하세요.", url));
       break;
     }
     case "share-stop":
@@ -524,6 +633,17 @@ document.addEventListener("click", async e => {
   }
 });
 
+// 알림 스위치
+document.addEventListener("change", async e => {
+  const el = e.target; if (!el.dataset || !el.dataset.push) return;
+  const want = el.checked; el.disabled = true;
+  try { want ? await enablePush(el.dataset.push) : await disablePush(el.dataset.push); }
+  catch (err) { alert(notifyError(err)); }
+  render();
+});
+
+$("lbl-period").textContent = T.periodOn;
+$("lbl-sex").textContent = T.sex;
 function openDay(k) {
   state.dayKey = k;
   const d = dateOf(k), l = data.logs[k];
