@@ -150,7 +150,7 @@ const MODEL = {
   halfLife: 6,        // 최근 주기 비중: 6주기 전 기록은 비중 절반
   skipRatio: 1.6,     // 평소의 1.6배를 넘는 간격은 기록을 빠뜨린 달로 보고 제외
   luteal: 12.4,       // 배란 → 다음 생리까지(일). Bull et al. 2019 평균. 배란테스트로 개인 값을 알면 교체
-  periodLen: 5,       // 기록이 적을 때 쓰는 생리 기간(일)
+  periodLen: 5,       // 생리 기간(일) 기본값. 정상 범위 3~8일(FIGO)의 대표값. 매일 기록한 달이 생기면 그 평균이 우선
   rangeZ: 1.2816      // 예측 범위: 80% 구간
 };
 
@@ -259,8 +259,13 @@ function makeEngine(logs, now = today()) {
   const sd = Math.sqrt(s2 * (1 + 1 / (k0 + W)));
   const q = z + (z ** 3 + z) / (4 * df); // t 분포 분위수 근사
 
-  const done = runs.filter(r => diffDays(r.end, now) >= 2).slice(-6).map(r => diffDays(r.start, r.end) + 1);
+  // 생리 기간: 이틀 이상 이어서 기록한 달만 실제 기간으로 봄 (시작일만 찍은 달은 기간 정보가 없음)
+  const done = runs.filter(r => r.end > r.start && diffDays(r.end, now) >= 2).slice(-6).map(r => diffDays(r.start, r.end) + 1);
   const len = Math.max(1, Math.min(10, Math.round((MODEL.periodLen * 2 + sum(done)) / (2 + done.length))));
+  // 시작일만 기록한 달은 위 기간만큼 생리로 채워서 보여줌 (저장된 기록은 그대로)
+  const inferred = new Set();
+  runs.forEach(r => { if (diffDays(r.start, r.end) === 0) for (let j = 1; j < len; j++) inferred.add(keyOf(addDays(r.start, j))); });
+  runs.forEach(r => { if (diffDays(r.start, r.end) === 0) r.end = addDays(r.start, len - 1); });
 
   const plan = new Set(), maybe = new Set(), fertile = new Set(), ovul = new Set(), starts = [], mids = [];
   const lut = Math.round(MODEL.luteal);
@@ -281,7 +286,7 @@ function makeEngine(logs, now = today()) {
   plan.forEach(k => maybe.delete(k));
   mids.sort((a, b) => a - b);
   mids.forEach(o => { ovul.add(keyOf(o)); for (let j = -5; j <= 1; j++) fertile.add(keyOf(addDays(o, j))); });
-  return { runs, mu, sd, len, plan, maybe, fertile, ovul, starts, mids };
+  return { runs, mu, sd, len, inferred, plan, maybe, fertile, ovul, starts, mids };
 }
 
 /* ---------- 실시간 공유 (Firebase) ----------
@@ -559,7 +564,7 @@ function calendarHtml(scope, e, logs, show, editable) {
     if (diffDays(date, t) === 0) c.push("today");
     if (anniv) c.push("anniv");
     const bars = [];
-    if (show.period && isRed(l)) bars.push("period");
+    if (show.period && (isRed(l) || e.inferred.has(k))) bars.push("period");
     else if (show.plan && e.plan.has(k)) bars.push("plan");
     else if (show.plan && e.maybe.has(k)) bars.push("maybe");
     if (show.fertile && e.fertile.has(k)) bars.push("fertile");
