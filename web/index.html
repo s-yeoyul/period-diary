@@ -130,7 +130,7 @@ svg{display:block}
 .legend svg{width:12px;height:12px}
 
 /* 오늘의 쥐 (시기 카드): 달력 아래, 사진 + 옆에 글. 사진 크기 = 그 폰에서 달력(6주 기준)을 그리고 남는 높이 */
-.phase{display:flex;align-items:center;gap:14px;margin:16px 0 0;padding-top:16px;border-top:1px solid var(--line)}
+.phase{display:flex;align-items:center;gap:14px;margin:16px 0 0}
 .phase img{flex:none;width:var(--phase-size,128px);height:var(--phase-size,128px);object-fit:cover;border-radius:18px;background:var(--line)}
 .phase .txt{min-width:0}
 .phase h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:26px;line-height:1.15;margin:0}
@@ -802,7 +802,7 @@ function sizePhase() {
   const cur = cal.querySelector(".panel.cur"), dayH = (cur.querySelector(".day") || {}).offsetHeight || 68;
   const extraRows = 6 - Math.round(cur.offsetHeight / dayH);
   const calBottom = cal.getBoundingClientRect().bottom + window.scrollY + extraRows * dayH;
-  const avail = window.innerHeight - calBottom - 33 - insetProbe.offsetHeight - 10;
+  const avail = window.innerHeight - calBottom - 16 - insetProbe.offsetHeight - 10;
   document.documentElement.style.setProperty("--phase-size", Math.max(96, Math.min(200, Math.floor(avail))) + "px");
 }
 window.addEventListener("resize", () => sizePhase());
