@@ -97,6 +97,8 @@ svg{display:block}
 .gate h1{font-family:'WatermelonYang','Hippie',sans-serif;font-weight:normal;font-size:44px;margin:0 0 8px}
 .gate p{color:var(--sub);margin:0 0 24px}
 .gate .stack{max-width:300px;margin:0 auto}
+/* 암호 칸: type=password 는 아이폰에서 한글 입력이 막혀서 일반 칸 + 글자 가리기 */
+.secret{-webkit-text-security:disc;text-security:disc}
 .err{color:var(--holiday);font-size:14px;min-height:21px;margin-top:8px}
 .center{text-align:center;margin-top:16px}
 
@@ -179,6 +181,8 @@ function annivOf(d) {
 const PROFILE = new URLSearchParams(location.search).get("profile") === "slave" ? "slave" : null;
 const MASTER_KEY = "calendar-v1";
 const STORAGE_KEY = PROFILE ? "calendar-v1:slave" : MASTER_KEY;
+// ?master : 이 기기를 마스터 암호 화면으로 (슬레이브로 바뀐 기기를 되돌릴 때)
+const FORCE_GATE = !PROFILE && new URLSearchParams(location.search).has("master");
 const SHOW_ALL = { period: true, plan: true, fertile: true, ovul: true, sex: true, shave: true, anniv: true };
 const isRed = l => !!(l && l.r);
 
@@ -530,7 +534,7 @@ function notifyError(e) {
 }
 
 /* ---------- 화면 ---------- */
-const state = { month: { me: today(), partner: today() }, dayKey: null, join: null, gateError: "", busy: false };
+const state = { month: { me: today(), partner: today() }, dayKey: null, join: null, gateError: "", busy: false, forceGate: FORCE_GATE };
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ICON = {
@@ -585,11 +589,11 @@ function calendarHtml(scope, e, logs, show, editable) {
 // 첫 화면: 암호 입력. 마스터 암호면 마스터, 초대 링크로 왔으면 질문에 답하기
 function gateView() {
   if (state.join) return `<div class="gate"><h1>캘린더</h1><p>${esc(state.join.question)}</p>
-    <div class="stack"><input class="field" id="gate-in" type="password" maxlength="10" autocomplete="off" placeholder="답">
+    <div class="stack"><input class="field secret" id="gate-in" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="10" autocomplete="off" placeholder="답">
     <button class="btn" data-action="join" ${state.busy ? "disabled" : ""}>${state.busy ? "확인 중…" : "확인"}</button></div>
     <div class="err">${esc(state.gateError)}</div></div>`;
   return `<div class="gate"><h1>캘린더</h1><p>암호를 입력해 주세요.</p>
-    <div class="stack"><input class="field" id="gate-in" type="password" autocomplete="off" placeholder="암호 또는 초대 링크">
+    <div class="stack"><input class="field secret" id="gate-in" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="암호 또는 초대 링크">
     <button class="btn" data-action="gate">확인</button></div>
     <div class="err">${esc(state.gateError)}</div></div>`;
 }
@@ -635,7 +639,7 @@ function slaveView() {
 
 function render() {
   try {
-    $("view").innerHTML = state.join || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
+    $("view").innerHTML = state.join || state.forceGate || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
   } catch (err) {
     console.error(err);
     $("view").innerHTML = `<p class="center note">화면을 그리지 못했어요. 새로고침해 주세요.</p>`;
@@ -655,7 +659,12 @@ document.addEventListener("click", async e => {
     case "gate": {
       const v = $("gate-in").value, join = parseJoin(v);
       if (join) { state.join = join; state.gateError = ""; render(); return; }
-      if (await sha256hex("cal-master:" + norm(v)) === MASTER_HASH) { data.mode = "me"; persist(); state.gateError = ""; render(); catchUp(); return; }
+      if (await sha256hex("cal-master:" + norm(v)) === MASTER_HASH) {
+        if (data.mode === "partner") { if (sync.unsub) { sync.unsub(); sync.unsub = null; } data.partnerLink = null; data.partner = null; }
+        data.mode = "me"; state.forceGate = false; state.gateError = ""; persist(); rebuild();
+        if (FORCE_GATE) history.replaceState(null, "", location.pathname);
+        render(); catchUp(); return;
+      }
       state.gateError = "암호가 맞지 않아요."; render(); return;
     }
     case "join": {
@@ -748,6 +757,11 @@ function handleHash() {
   const join = parseJoin(location.hash); if (!join) return;
   history.replaceState(null, "", location.pathname + location.search);
   if (data.mode === "partner" && data.partnerLink && data.partnerLink.id === join.id) return;
+  if (data.mode === "me" && !PROFILE) {
+    // 마스터 기기가 실수로 슬레이브가 되지 않게
+    if (data.myShare && data.myShare.id === join.id) { alert("마스터 기기에서 연 내 초대 링크예요. 슬레이브 폰에서 열어 주세요."); return; }
+    if (!confirm("이 기기를 슬레이브로 바꿀까요? 이 기기의 마스터 기록은 지워지지 않아요.")) return;
+  }
   state.join = join; state.gateError = ""; render();
 }
 window.addEventListener("hashchange", handleHash);
