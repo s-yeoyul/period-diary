@@ -920,8 +920,11 @@ function slaveView() {
 
 function render() {
   try {
+    const oldImg = document.querySelector(".phase img"); // 같은 사진이면 다시 불러오지 않고 그대로 씀
     $("view").innerHTML = state.join || state.forceGate || !data.mode ? gateView() : data.mode === "me" ? masterView() : slaveView();
     document.querySelectorAll(".pager").forEach(p => { p.style.height = p.querySelector(".panel.cur").offsetHeight + "px"; });
+    const newImg = document.querySelector(".phase img");
+    if (oldImg && newImg && oldImg.src === newImg.src) newImg.replaceWith(oldImg);
     sizePhase();
   } catch (err) {
     console.error(err);
