@@ -73,7 +73,7 @@ html.fonts-wait #loading{display:flex;position:fixed;inset:0;align-items:center;
   --period:#DA5552;    /* 생리 */
   --plan:#5D576B;      /* 생리 예정일 */
   --fertile:#FEC0AA;   /* 가임기 */
-  --ovul:#222222;      /* 배란일 체크 (임시, 나중에 쥐 사진) */
+  --ovul:#F2C94C;      /* 알낳는날 노란 타원 (임시, 나중에 손그림) */
   --sex:#CA7DF9;       /* 관계 하트 */
   --shave:#B7B5B3;     /* 제모 수풀 */
   --today:#C2E1C2;     /* 오늘 */
@@ -122,13 +122,15 @@ svg{display:block}
 .icons{display:flex;gap:2px;margin-top:3px;height:12px}
 .icons svg{width:12px;height:12px}
 .ic-sex{color:var(--sex)} .ic-shave{color:var(--shave)} .ic-ovul{color:var(--ovul)}
-.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:13px;color:var(--sub);margin-top:14px}
+.legend{font-size:13px;color:var(--sub);margin-top:14px}
+.legend .lg-row{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px}
+.legend .lg-row + .lg-row{margin-top:6px}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend .lb{width:14px;height:4px;border-radius:2px;display:inline-block}
 .legend svg{width:12px;height:12px}
 
 /* 오늘의 쥐 (시기 카드): 달력 아래, 사진 + 옆에 글. 사진 크기 = 그 폰에서 달력(6주 기준)을 그리고 남는 높이 */
-.phase{display:flex;align-items:center;gap:14px;margin:16px 0 0}
+.phase{display:flex;align-items:center;gap:14px;margin:16px 0 0;padding-top:16px;border-top:1px solid var(--line)}
 .phase img{flex:none;width:var(--phase-size,128px);height:var(--phase-size,128px);object-fit:cover;border-radius:18px;background:var(--line)}
 .phase .txt{min-width:0}
 .phase h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:26px;line-height:1.15;margin:0}
@@ -192,19 +194,19 @@ dialog::backdrop{background:rgba(0,0,0,.25)}
 /* ---------- 화면에 나오는 말 (둘만의 용어로 바꿀 땐 여기만) ----------
    알림 문구는 worker/src/index.js 의 MESSAGES */
 const T = {
-  period: "생리", periodOn: "생리 중", periodPlan: "생리 예정", periodMaybe: "예정 범위",
-  fertile: "가임기", ovulation: "배란일", sex: "쥐잡", shave: "털갈이", anniv: "기념일", master: "주인",
+  period: "쥐구멍", periodOn: "쥐구멍 속", periodPlan: "쥐구멍 앞", periodDay: "쥐구멍 입장", periodMaybe: "쥐구멍 근처",
+  fertile: "꿀렁", ovulation: "알낳는날", sex: "쥐잡", shave: "털갈이", anniv: "기념일", master: "주인",
   slave: "쥐"             // 파트너(캘린더를 보는 쪽)
 };
 
 /* ---------- 오늘의 쥐: 시기별 사진 · 단계 · 설명 (문구는 여기만 고치면 돼요. 해결책은 TODO) ---------- */
 const PHASES = {
   rage:  { img: "img/phase-rage.jpg",  title: "광기의 쥐",
-           desc: "생리 예정일 일주일 전. 사소한 일에도 화가 나고 다 뿌셔버리고 싶은 단계예요.", },
+           desc: `${T.periodDay} 일주일 전. 사소한 일에도 화가 나고 다 뿌셔버리고 싶은 단계예요.`, },
   blue:  { img: "img/phase-blue.jpg",  title: "우울한 쥐",
-           desc: "생리 예정일 3일 전. 기운이 없고 마음이 가라앉는 단계예요.", },
+           desc: `${T.periodDay} 3일 전. 기운이 없고 마음이 가라앉는 단계예요.`, },
   small: { img: "img/phase-small.jpg", pos: "50% 15%", title: "아주 작은 쥐",
-           desc: "생리 기간. 몸도 마음도 아주 약해지는 단계예요.", },
+           desc: `${T.periodOn}. 몸도 마음도 아주 약해지는 단계예요.`, },
   calm:  { img: "img/phase-calm.jpg",  title: "평온한 쥐",
            desc: "아주 평온한 단계예요.", }
 };
@@ -769,6 +771,7 @@ const ICON = {
   right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>`,
   heart: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.2s-7.6-4.7-9.6-9.4C1 8.4 3.2 4.8 6.8 4.8c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.6 0 5.8 3.6 4.4 7-2 4.7-9.6 9.4-9.6 9.4z"/></svg>`,
   bush: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21c.5-4 .2-7-1-10M8.5 21c0-5 .8-9 2.5-13M13.5 21c.2-5 1.5-8.5 4-11.5M18.5 21c.3-3 1.2-5 2.5-6.5"/></svg>`,
+  egg: `<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="7.5" ry="9.5" fill="currentColor"/></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></svg>`,
   heartbg: `<svg class="heartbg" viewBox="0 0 42 42"><path d="M21 37s-14-8.6-17.4-17.2C1.2 13.6 5 7 11.6 7c3.9 0 6.6 2.1 9.4 5.6C23.8 9.1 26.5 7 30.4 7 37 7 40.8 13.6 38.4 19.8 35 28.4 21 37 21 37z"/></svg>`
 };
@@ -784,10 +787,10 @@ function phaseOf(e, logs, date = today()) {
   const next = e.starts.find(x => x >= date), d = next ? diffDays(date, next) : null;
   const last = e.runs[e.runs.length - 1], expected = addDays(last.start, Math.round(e.mu));
   const late = diffDays(expected, date);
-  if (late > 0 && date > last.end) return { key: "blue", when: `${T.periodPlan}일이 ${late}일 지났어요` };
-  if (d === 0) return { key: "blue", when: `오늘이 ${T.periodPlan}일이에요` };
-  if (d >= 1 && d <= 3) return { key: "blue", when: `${T.periodPlan}일 ${d}일 전` };
-  if (d >= 4 && d <= 7) return { key: "rage", when: `${T.periodPlan}일 ${d}일 전` };
+  if (late > 0 && date > last.end) return { key: "blue", when: `${T.periodDay}이 ${late}일 지났어요` };
+  if (d === 0) return { key: "blue", when: `오늘이 ${T.periodDay}이에요` };
+  if (d >= 1 && d <= 3) return { key: "blue", when: `${T.periodDay} ${d}일 전` };
+  if (d >= 4 && d <= 7) return { key: "rage", when: `${T.periodDay} ${d}일 전` };
   return { key: "calm", when: d ? `다음 ${T.period}까지 ${d}일` : "" };
 }
 // 사진 크기: 화면 높이 − (6주짜리 달력 끝 위치) − 아래 홈 바 자리. 달을 넘겨도 크기가 안 바뀌게 항상 6주 기준
@@ -799,7 +802,7 @@ function sizePhase() {
   const cur = cal.querySelector(".panel.cur"), dayH = (cur.querySelector(".day") || {}).offsetHeight || 68;
   const extraRows = 6 - Math.round(cur.offsetHeight / dayH);
   const calBottom = cal.getBoundingClientRect().bottom + window.scrollY + extraRows * dayH;
-  const avail = window.innerHeight - calBottom - 16 - insetProbe.offsetHeight - 10;
+  const avail = window.innerHeight - calBottom - 33 - insetProbe.offsetHeight - 10;
   document.documentElement.style.setProperty("--phase-size", Math.max(96, Math.min(200, Math.floor(avail))) + "px");
 }
 window.addEventListener("resize", () => sizePhase());
@@ -828,7 +831,7 @@ function monthCells(m, e, logs, show, editable) {
     else if (show.plan && e.maybe.has(k)) bars.push("maybe");
     if (show.fertile && e.fertile.has(k)) bars.push("fertile");
     const icons = [];
-    if (show.ovul && e.ovul.has(k)) icons.push(`<span class="ic-ovul">${ICON.check}</span>`);
+    if (show.ovul && e.ovul.has(k)) icons.push(`<span class="ic-ovul">${ICON.egg}</span>`);
     if (show.sex && l && l.h) icons.push(`<span class="ic-sex">${ICON.heart}</span>`);
     if (show.shave && l && l.s) icons.push(`<span class="ic-shave">${ICON.bush}</span>`);
     cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"} aria-label="${mo + 1}월 ${d}일${anniv ? " " + anniv : ""}">`
@@ -842,20 +845,20 @@ function monthCells(m, e, logs, show, editable) {
 function calendarHtml(scope, e, logs, show, editable) {
   const m = state.month[scope], y = m.getFullYear(), mo = m.getMonth();
   const panel = (delta, cls) => `<div class="panel grid${cls}">${monthCells(new Date(y, mo + delta, 1), e, logs, show, editable)}</div>`;
-  const lg = [];
+  const lg = [], lgIcon = []; // 위: 막대 범례 / 아래: 아이콘 범례
   if (show.period) lg.push(`<span><i class="lb" style="background:var(--period)"></i>${T.period}</span>`);
   if (show.plan) lg.push(`<span><i class="lb" style="background:var(--plan)"></i>${T.periodPlan}</span>`,
                          `<span><i class="lb" style="background:var(--plan);height:2px;opacity:.45"></i>${T.periodMaybe}</span>`);
   if (show.fertile) lg.push(`<span><i class="lb" style="background:var(--fertile)"></i>${T.fertile}</span>`);
-  if (show.ovul) lg.push(`<span><span class="ic-ovul">${ICON.check}</span>${T.ovulation}</span>`);
-  if (show.sex) lg.push(`<span><span class="ic-sex">${ICON.heart}</span>${T.sex}</span>`);
-  if (show.shave) lg.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
+  if (show.ovul) lgIcon.push(`<span><span class="ic-ovul">${ICON.egg}</span>${T.ovulation}</span>`);
+  if (show.sex) lgIcon.push(`<span><span class="ic-sex">${ICON.heart}</span>${T.sex}</span>`);
+  if (show.shave) lgIcon.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
   return `<div class="cal" data-scope="${scope}">
     <div class="cal-head"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button>
       <b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
     <div class="grid">${WD.map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("")}</div>
     <div class="pager"><div class="track">${panel(-1, "")}${panel(0, " cur")}${panel(1, "")}</div></div>
-    <div class="legend">${lg.join("")}</div></div>`;
+    <div class="legend">${[lg, lgIcon].filter(r => r.length).map(r => `<div class="lg-row">${r.join("")}</div>`).join("")}</div></div>`;
 }
 
 // 첫 화면: 암호 입력. 마스터 암호면 마스터, 초대 링크로 왔으면 질문에 답하기
