@@ -24,7 +24,7 @@ self.addEventListener("activate", e => {
     .then(() => self.clients.claim()));
 });
 
-// 네트워크 우선, 실패하면 캐시
+// 네트워크 우선, 실패하면 캐시. cache:"no-cache" = 브라우저의 10분 임시 보관을 건너뛰고 서버에 새 버전 확인
 self.addEventListener("fetch", e => {
   const req = e.request;
   // 글꼴: 저장된 게 있으면 바로, 없으면 받아서 저장
@@ -37,7 +37,7 @@ self.addEventListener("fetch", e => {
   }
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(req).then(res => {
+    fetch(req, { cache: "no-cache" }).then(res => {
       const copy = res.clone();
       caches.open(VERSION).then(c => c.put(req, copy));
       return res;

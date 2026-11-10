@@ -1071,7 +1071,7 @@ handleHash();
 catchUp();
 watchPartner();
 navigator.storage?.persist?.().catch(() => {});
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 </script>
 </body>
 </html>
