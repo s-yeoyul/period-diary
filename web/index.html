@@ -846,7 +846,7 @@ function calendarHtml(scope, e, logs, show, editable) {
   const m = state.month[scope], y = m.getFullYear(), mo = m.getMonth();
   const panel = (delta, cls) => `<div class="panel grid${cls}">${monthCells(new Date(y, mo + delta, 1), e, logs, show, editable)}</div>`;
   const lg = [], lgIcon = []; // 위: 막대 범례 / 아래: 아이콘 범례
-  if (show.period) lg.push(`<span><i class="lb" style="background:var(--period)"></i>${T.period}</span>`);
+  if (show.period) lg.push(`<span><i class="lb" style="background:var(--period)"></i>${T.periodOn}</span>`);
   if (show.plan) lg.push(`<span><i class="lb" style="background:var(--plan)"></i>${T.periodPlan}</span>`,
                          `<span><i class="lb" style="background:var(--plan);height:2px;opacity:.45"></i>${T.periodMaybe}</span>`);
   if (show.fertile) lg.push(`<span><i class="lb" style="background:var(--fertile)"></i>${T.fertile}</span>`);
