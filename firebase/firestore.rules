@@ -1,22 +1,73 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 공유 문서: 내용은 암호화되어 있고, 링크(문서 ID + 열쇠)를 가진 사람만 읽을 수 있음
+
+    function vaultMember(vid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/vaults/$(vid))
+        && request.auth.uid in get(/databases/$(database)/documents/vaults/$(vid)).data.devices;
+    }
+
+    // 쥐에게 보내는 공유 문서: 내용은 암호화되어 있고, 링크 + 답을 알아야 열 수 있음
+    // owner: 처음 만든 기기 / vault: 같은 마스터 묶음이면 다른 마스터 기기도 고칠 수 있음
     match /shares/{id} {
-      function validShape() {
+      function shareShape() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['owner', 'v', 'iv', 'ct', 'updatedAt'])
-          && d.owner == request.auth.uid
+        return d.keys().hasOnly(['owner', 'v', 'iv', 'ct', 'updatedAt', 'vault'])
           && d.iv is string && d.iv.size() < 64
           && d.ct is string && d.ct.size() < 500000
           && d.updatedAt == request.time;
       }
       allow get: if true;            // ID를 알아야 읽을 수 있음 (목록 조회는 불가)
       allow list: if false;
-      allow create: if request.auth != null && validShape();
-      allow update: if request.auth != null && resource.data.owner == request.auth.uid && validShape();
-      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow create: if request.auth != null && shareShape()
+        && request.resource.data.owner == request.auth.uid
+        && (!('vault' in request.resource.data) || vaultMember(request.resource.data.vault));
+      allow update: if request.auth != null && shareShape()
+        && request.resource.data.owner == resource.data.owner
+        && (request.auth.uid == resource.data.owner
+            || ('vault' in resource.data
+                && request.resource.data.get('vault', '') == resource.data.vault
+                && vaultMember(resource.data.vault)));
+      allow delete: if request.auth != null
+        && (resource.data.owner == request.auth.uid || ('vault' in resource.data && vaultMember(resource.data.vault)));
     }
+
+    // 마스터 묶음(동기화 · 백업): 암호화된 마스터 기록. 등록된 기기만 읽고 쓸 수 있음
+    // 새 기기는 "기기 추가 링크"의 일회용 토큰으로 스스로를 등록
+    match /vaults/{vid} {
+      function vaultShape() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['devices', 'pairHash', 'pair', 'v', 'iv', 'ct', 'updatedAt'])
+          && d.devices is list && d.devices.size() >= 1 && d.devices.size() <= 6
+          && d.pairHash is string && d.pairHash.size() <= 64
+          && d.iv is string && d.iv.size() < 64
+          && d.ct is string && d.ct.size() < 900000;
+      }
+      allow get: if request.auth != null && request.auth.uid in resource.data.devices;
+      allow list: if false;
+      allow create: if request.auth != null && vaultShape()
+        && request.resource.data.devices == [request.auth.uid]
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null && vaultShape() && (
+        // 등록된 기기: 내용 갱신 (자기 자신은 계속 등록된 상태여야 함)
+        (request.auth.uid in resource.data.devices
+          && request.auth.uid in request.resource.data.devices
+          && request.resource.data.updatedAt == request.time)
+        ||
+        // 새 기기 등록: 토큰이 맞을 때 기기 목록에 자기만 추가 (다른 값은 못 바꿈)
+        (!(request.auth.uid in resource.data.devices)
+          && resource.data.pairHash.size() == 64
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['devices', 'pair'])
+          && request.resource.data.devices.hasAll(resource.data.devices)
+          && request.resource.data.devices.size() == resource.data.devices.size() + 1
+          && request.auth.uid in request.resource.data.devices
+          && request.resource.data.pair is string
+          && hashing.sha256(request.resource.data.pair).toHexString().lower() == resource.data.pairHash)
+      );
+      allow delete: if request.auth != null && request.auth.uid in resource.data.devices;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

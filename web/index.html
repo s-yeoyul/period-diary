@@ -205,7 +205,7 @@ let oldShareId = null;
 function load() {
   // mode: "me"(마스터) | "partner"(슬레이브) | null(첫 화면)
   // myShare: 마스터가 올리는 공유 {id, key, salt, question, fp} / partnerLink: 슬레이브가 보는 공유 {id, key}
-  const base = { mode: null, logs: {}, show: { ...SHOW_ALL }, partner: null, myShare: null, partnerLink: null };
+  const base = { mode: null, logs: {}, meta: {}, metaAt: {}, vault: null, show: { ...SHOW_ALL }, partner: null, myShare: null, partnerLink: null };
   try {
     const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!p) return base;
@@ -232,7 +232,8 @@ function rebuild() {
   engine = makeEngine(data.logs);
   partnerEngine = data.partner ? makeEngine(data.partner.logs) : null;
 }
-function save() { persist(); rebuild(); scheduleSync(); scheduleReminders(); }
+function save() { persist(); rebuild(); scheduleSync(); scheduleReminders(); scheduleVault(); }
+const stamp = f => { data.metaAt = { ...(data.metaAt || {}), [f]: Date.now() }; };
 
 /* ---------- 주기 예측 ----------
    개인 기록 + 사전값을 섞는 베이지안 방식 (Li et al. 2021, SkipTrack 2025의 아이디어를 한 사람용으로 단순화)
@@ -316,9 +317,11 @@ const Cloud = {
     if (!auth.currentUser) await au.signInAnonymously(auth);
     return auth.currentUser.uid;
   },
-  async put(id, payload) {
+  async put(id, payload, owner) {
     const { fs, db } = await this.load();
-    await fs.setDoc(fs.doc(db, "shares", id), { owner: await this.uid(), v: 1, ...payload, updatedAt: fs.serverTimestamp() });
+    const doc = { owner: owner || await this.uid(), v: 1, ...payload, updatedAt: fs.serverTimestamp() };
+    if (data.vault) doc.vault = data.vault.id;
+    await fs.setDoc(fs.doc(db, "shares", id), doc);
   },
   async get(id) { const { fs, db } = await this.load(); const s = await fs.getDoc(fs.doc(db, "shares", id)); return s.exists() ? s.data() : null; },
   async remove(id) { const { fs, db } = await this.load(); await this.uid(); await fs.deleteDoc(fs.doc(db, "shares", id)); },
@@ -374,7 +377,7 @@ function snapshot() {
   return { format: "cal", version: 2, exportedAt: isoNow(), logs, show,
            notifyId: data.notify && data.notify.claimed ? data.notify.id : null };
 }
-const shareFp = () => JSON.stringify([data.logs, data.show, data.notify && data.notify.claimed ? data.notify.id : null]);
+const shareFp = () => JSON.stringify([data.logs, data.show, data.notify && data.notify.claimed ? data.notify.id : null, data.vault && data.vault.id]);
 const sync = { timer: null, unsub: null, live: false, gone: false, error: "" };
 
 function scheduleSync(delay = 800) {
@@ -387,7 +390,7 @@ async function pushShare() {
   const fp = shareFp();
   if (fp === share.fp) return;
   try {
-    await Cloud.put(share.id, await Crypt.encrypt(share.key, snapshot()));
+    await Cloud.put(share.id, await Crypt.encrypt(share.key, snapshot()), share.owner);
     share.fp = fp; sync.error = ""; persist();
   } catch (e) {
     sync.error = e.code === "permission-denied" ? "이 기기에서 공유를 수정할 수 없어요. 연결을 새로 만들어 주세요." : "인터넷 연결 후 자동으로 올려요.";
@@ -397,14 +400,157 @@ async function pushShare() {
 async function createShare(question, answer) {
   const id = randId(15), salt = randId(16), key = await Crypt.fromAnswer(answer, salt);
   if (NOTIFY) await ensureChannel().catch(() => {});
-  await Cloud.put(id, await Crypt.encrypt(key, snapshot()));
-  data.myShare = { id, salt, key, question, fp: shareFp() };
-  persist();
+  const owner = await Cloud.uid();
+  await Cloud.put(id, await Crypt.encrypt(key, snapshot()), owner);
+  data.myShare = { id, salt, key, question, owner, fp: shareFp() };
+  stamp("share"); save();
 }
 async function stopShare() {
   if (data.myShare) { try { await Cloud.remove(data.myShare.id); } catch {} }
-  data.myShare = null; data.pendingNotify = false; persist();
+  data.myShare = null; data.pendingNotify = false; stamp("share"); save();
   await rotateChannel(); // 한 마스터당 한 슬레이브: 예전 슬레이브의 알림도 끊음
+}
+
+/* ---------- 마스터 동기화 · 자동 백업 (Firebase vaults) ----------
+   마스터 기록 전체를 이 기기에서 암호화해 서버에 올림 → 여러 마스터 기기가 같은 캘린더를 씀, 쥐 연결과 무관하게 남음
+   - 날짜별로 마지막으로 바꾼 시각(meta)을 기록해서, 기기끼리 다르면 더 최근 것을 씀
+   - 시각이 같거나 없으면(예전 기록) 있는 쪽을 남김 → 애매할 때 지우지 않음 */
+const vaultSync = { timer: null, unsub: null, ok: false, error: "", devices: 0, lastFp: "", creating: false };
+const canon = v => JSON.stringify(v, (k, x) => x && typeof x === "object" && !Array.isArray(x)
+  ? Object.fromEntries(Object.keys(x).sort().map(key => [key, x[key]])) : x);
+const SAFETY_KEY = STORAGE_KEY + ":safety";
+function safetyCopy(tag) {
+  // 처음 동기화하기 전 기록을 이 기기에 따로 한 번 보관 (만일을 위해)
+  try { if (!localStorage.getItem(SAFETY_KEY)) localStorage.setItem(SAFETY_KEY, JSON.stringify({ at: isoNow(), tag, logs: data.logs })); } catch {}
+}
+function vaultPayload() {
+  const s = data.myShare, n = data.notify;
+  return { v: 1, logs: data.logs, meta: data.meta || {}, show: data.show,
+    share: s ? { id: s.id, salt: s.salt, key: s.key, question: s.question, owner: s.owner || null } : null,
+    notify: n ? { id: n.id, token: n.token, claimed: !!n.claimed } : null,
+    at: data.metaAt || {} };
+}
+function mergeRemote(r) {
+  if (!r || typeof r !== "object") return false;
+  const before = canon(vaultPayload());
+  const ll = data.logs, rl = cleanLogs(r.logs), lm = data.meta || {}, rm = r.meta && typeof r.meta === "object" ? r.meta : {};
+  const logs = {}, meta = {};
+  for (const k of new Set([...Object.keys(ll), ...Object.keys(rl), ...Object.keys(lm), ...Object.keys(rm)])) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) continue;
+    const tl = +lm[k] || 0, tr = +rm[k] || 0;
+    const v = tr > tl ? rl[k] : tl > tr ? ll[k] : (ll[k] || rl[k]);
+    if (v) logs[k] = v;
+    if (tl || tr) meta[k] = Math.max(tl, tr);
+  }
+  data.logs = logs; data.meta = meta;
+  const la = { ...(data.metaAt || {}) }, ra = r.at && typeof r.at === "object" ? r.at : {};
+  const pick = (f, lv, rv, apply) => {
+    const tl = +la[f] || 0, tr = +ra[f] || 0;
+    if (tr > tl || (tr === tl && lv == null && rv != null)) { apply(rv); if (tr) la[f] = tr; }
+  };
+  pick("show", data.show, r.show, v => { data.show = cleanShow(v); });
+  pick("share", data.myShare, r.share, s => {
+    if (!s) data.myShare = null;
+    else if (!data.myShare || data.myShare.id !== s.id)
+      data.myShare = { id: s.id, salt: s.salt, key: s.key, question: String(s.question || ""), owner: s.owner || null, fp: null };
+    else if (!data.myShare.owner) data.myShare.owner = s.owner || null;
+  });
+  pick("notify", data.notify, r.notify, n => {
+    if (!n) data.notify = null;
+    else if (!data.notify || data.notify.id !== n.id) data.notify = { id: n.id, token: n.token, claimed: !!n.claimed };
+  });
+  data.metaAt = la;
+  return canon(vaultPayload()) !== before;
+}
+function scheduleVault(delay = 1200) {
+  if (!data.vault || data.mode !== "me" || PROFILE || !Cloud.configured) return;
+  clearTimeout(vaultSync.timer);
+  vaultSync.timer = setTimeout(pushVault, delay);
+}
+async function pushVault() {
+  if (!data.vault || canon(vaultPayload()) === vaultSync.lastFp) return;
+  try {
+    const { fs, db } = await Cloud.load(); await Cloud.uid();
+    const ref = fs.doc(db, "vaults", data.vault.id);
+    await fs.runTransaction(db, async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error("gone");
+      mergeRemote(await Crypt.decrypt(data.vault.key, snap.data()));
+      tx.update(ref, { ...(await Crypt.encrypt(data.vault.key, vaultPayload())), updatedAt: fs.serverTimestamp() });
+    });
+    vaultSync.lastFp = canon(vaultPayload()); vaultSync.error = "";
+    persist(); rebuild(); scheduleSync(0);
+  } catch (e) {
+    vaultSync.error = e.code === "permission-denied" ? "이 기기는 백업에 등록되어 있지 않아요." : "인터넷 연결 후 자동으로 백업해요.";
+  }
+  refresh();
+}
+async function ensureVault() {
+  if (vaultSync.creating || data.vault || data.mode !== "me" || PROFILE || !Cloud.configured) return;
+  vaultSync.creating = true;
+  try {
+    safetyCopy("before-vault");
+    const { fs, db } = await Cloud.load(); const uid = await Cloud.uid();
+    if (data.myShare && !data.myShare.owner) data.myShare.owner = uid; // 지금 공유를 만든 기기 = 이 기기
+    const id = randId(15), key = randId(32);
+    await fs.setDoc(fs.doc(db, "vaults", id), { devices: [uid], pairHash: "", v: 1, ...(await Crypt.encrypt(key, vaultPayload())), updatedAt: fs.serverTimestamp() });
+    data.vault = { id, key }; persist();
+    vaultSync.lastFp = canon(vaultPayload()); vaultSync.error = "";
+    scheduleSync(0); watchVault();
+  } catch { vaultSync.error = "백업을 만들지 못했어요. 인터넷 연결 후 다시 시도해요."; }
+  vaultSync.creating = false; refresh();
+}
+async function watchVault() {
+  if (vaultSync.unsub || !data.vault || data.mode !== "me" || PROFILE || !Cloud.configured) return;
+  try {
+    const { fs, db } = await Cloud.load(); await Cloud.uid();
+    const vid = data.vault.id;
+    vaultSync.unsub = fs.onSnapshot(fs.doc(db, "vaults", vid), async snap => {
+      if (!data.vault || data.vault.id !== vid) return;
+      if (!snap.exists()) { vaultSync.ok = false; vaultSync.error = "백업을 찾을 수 없어요."; refresh(); return; }
+      const d = snap.data(); vaultSync.devices = (d.devices || []).length;
+      try {
+        const remote = await Crypt.decrypt(data.vault.key, d);
+        const changed = mergeRemote(remote);
+        vaultSync.ok = true; vaultSync.error = "";
+        if (changed) { persist(); rebuild(); scheduleSync(0); scheduleReminders(0); }
+        vaultSync.lastFp = canon(remote);
+        if (canon(vaultPayload()) !== vaultSync.lastFp) scheduleVault(); // 이 기기에 더 최근 기록이 있으면 올림
+      } catch { vaultSync.error = "백업을 열지 못했어요."; }
+      refresh();
+    }, err => { vaultSync.ok = false; vaultSync.error = err.code === "permission-denied" ? "이 기기는 백업에 등록되어 있지 않아요." : ""; refresh(); });
+  } catch {}
+}
+// 기기 추가 링크: #m=묶음ID.열쇠.일회용토큰
+async function makeDeviceLink() {
+  await ensureVault();
+  if (!data.vault) throw new Error("no-vault");
+  const token = randId(24);
+  const { fs, db } = await Cloud.load(); await Cloud.uid();
+  await fs.updateDoc(fs.doc(db, "vaults", data.vault.id), { pairHash: await sha256hex(token), updatedAt: fs.serverTimestamp() });
+  return `${location.origin}${location.pathname}#m=${data.vault.id}.${data.vault.key}.${token}`;
+}
+function parseDevice(text) {
+  const m = String(text || "").match(/#m=([A-Za-z0-9_-]{10,})\.([A-Za-z0-9_-]{40,})\.([A-Za-z0-9_-]{20,})/);
+  return m && { id: m[1], key: m[2], token: m[3] };
+}
+async function joinDevice(link) {
+  const { fs, db } = await Cloud.load(); const uid = await Cloud.uid();
+  const ref = fs.doc(db, "vaults", link.id);
+  try { await fs.updateDoc(ref, { devices: fs.arrayUnion(uid), pair: link.token }); } catch {} // 이미 등록된 기기면 실패해도 괜찮음
+  let snap;
+  try { snap = await fs.getDoc(ref); } catch { throw new Error("denied"); }
+  if (!snap.exists()) throw new Error("gone");
+  let remote;
+  try { remote = await Crypt.decrypt(link.key, snap.data()); } catch { throw new Error("key"); }
+  safetyCopy("before-join");
+  if (data.mode === "partner") { if (sync.unsub) { sync.unsub(); sync.unsub = null; } data.partnerLink = null; data.partner = null; }
+  if (vaultSync.unsub) { vaultSync.unsub(); vaultSync.unsub = null; }
+  data.mode = "me"; data.vault = { id: link.id, key: link.key };
+  mergeRemote(remote); persist(); rebuild();
+  vaultSync.lastFp = canon(remote);
+  fs.updateDoc(ref, { pairHash: await sha256hex(randId(24)), updatedAt: fs.serverTimestamp() }).catch(() => {}); // 링크 재사용 막기
+  watchVault(); scheduleVault(0); catchUp();
 }
 
 async function watchPartner() {
@@ -453,7 +599,7 @@ async function ensureChannel() {
   if (!data.notify) { data.notify = { id: randId(18), token: randId(32), claimed: false }; persist(); }
   if (!data.notify.claimed) {
     await api("/claim", { id: data.notify.id, token: data.notify.token });
-    data.notify.claimed = true; persist(); scheduleSync(0);
+    data.notify.claimed = true; stamp("notify"); save();
   }
   return data.notify;
 }
@@ -493,7 +639,7 @@ async function disablePush(role) {
 }
 async function rotateChannel() {
   const old = data.notify;
-  data.notify = null; persist();
+  data.notify = null; stamp("notify"); save();
   if (old && old.claimed) api("/delete", { id: old.id, token: old.token }).catch(() => {});
   if (!data.pushSelf || !NOTIFY) return;
   try {
@@ -605,7 +751,16 @@ function gateView() {
 }
 
 function masterView() {
-  return calendarHtml("me", engine, data.logs, SHOW_ALL, true) + slaveGroup() + showGroup() + notifyGroup();
+  return calendarHtml("me", engine, data.logs, SHOW_ALL, true) + slaveGroup() + showGroup() + notifyGroup() + deviceGroup();
+}
+
+function deviceGroup() {
+  if (!Cloud.configured) return "";
+  const status = vaultSync.error || (!data.vault ? "백업 준비 중…" : vaultSync.ok ? `자동 백업 중 · 마스터 기기 ${vaultSync.devices || 1}대` : "연결 중…");
+  return `<div class="group"><h2>마스터 기기 · 백업</h2>
+    <div class="row"><span class="t">기기 추가 링크<small>${esc(status)}</small></span><button class="btn" data-action="device-link" ${state.busy ? "disabled" : ""}>만들기</button></div>
+    ${state.deviceLink ? `<div class="stack"><input class="field" id="device-url" readonly value="${esc(state.deviceLink)}"><button class="btn" data-action="device-copy">복사</button></div>` : ""}
+    <p class="note">다른 폰이나 컴퓨터의 첫 화면에 이 링크를 붙여 넣으면 같은 캘린더를 함께 써요. 링크는 한 번 쓰면 사라지고, 새로 만들면 이전 링크는 무효가 돼요. 기기를 잃어버릴 때를 대비해 하나 만들어 메모에 저장해 두면 복구용으로 쓸 수 있어요.</p></div>`;
 }
 
 function slaveGroup() {
@@ -663,7 +818,13 @@ document.addEventListener("click", async e => {
   if (el.dataset.day) { openDay(el.dataset.day); return; }
   switch (el.dataset.action) {
     case "gate": {
-      const v = $("gate-in").value, join = parseJoin(v);
+      const v = $("gate-in").value, join = parseJoin(v), dev = parseDevice(v);
+      if (dev) {
+        el.disabled = true; el.textContent = "연결 중…";
+        try { await joinDevice(dev); state.forceGate = false; state.gateError = ""; if (FORCE_GATE) history.replaceState(null, "", location.pathname); }
+        catch (err) { state.gateError = { gone: "없는 링크예요.", denied: "이미 쓴 링크예요. 마스터 기기에서 새로 만들어 주세요.", key: "링크가 잘못됐어요." }[err.message] || "연결하지 못했어요. 인터넷을 확인해 주세요."; }
+        render(); return;
+      }
       if (join) { state.join = join; state.gateError = ""; render(); return; }
       if (await sha256hex("cal-master:" + norm(v)) === MASTER_HASH) {
         if (data.mode === "partner") { if (sync.unsub) { sync.unsub(); sync.unsub = null; } data.partnerLink = null; data.partner = null; }
@@ -698,6 +859,13 @@ document.addEventListener("click", async e => {
     case "share-stop":
       if (!confirm("연결을 끊을까요? 다시 연결하려면 초대 링크를 새로 만들어야 해요.")) return;
       await stopShare(); render(); return;
+    case "device-link":
+      state.busy = true; render();
+      try { state.deviceLink = await makeDeviceLink(); } catch { alert("링크를 만들지 못했어요. 인터넷 연결을 확인해 주세요."); }
+      state.busy = false; render(); return;
+    case "device-copy":
+      navigator.clipboard?.writeText(state.deviceLink).then(() => alert("링크를 복사했어요."), () => { $("device-url").select(); document.execCommand("copy"); });
+      return;
     case "push-partner":
       el.disabled = true;
       try { await enablePush("partner"); } catch (err) { alert(notifyError(err)); }
@@ -710,7 +878,7 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("change", async e => {
   const el = e.target;
-  if (el.dataset && el.dataset.show) { data.show[el.dataset.show] = el.checked; persist(); scheduleSync(0); return; }
+  if (el.dataset && el.dataset.show) { data.show[el.dataset.show] = el.checked; stamp("show"); save(); return; }
   if (el.dataset && el.dataset.push) {
     const want = el.checked; el.disabled = true;
     try { want ? await enablePush(el.dataset.push) : await disablePush(el.dataset.push); } catch (err) { alert(notifyError(err)); }
@@ -751,6 +919,7 @@ function updateDay() {
   const l = { r: $("chk-red").checked, h: $("chk-heart").checked, s: $("chk-shave").checked };
   const redChanged = isRed(data.logs[k]) !== l.r;
   if (l.r || l.h || l.s) data.logs[k] = l; else delete data.logs[k];
+  data.meta = { ...(data.meta || {}), [k]: Date.now() };
   save(); render();
   if (redChanged) queueUpdateNotify(); // 생리 기록이 바뀔 때만 슬레이브에게 알림
 }
@@ -760,6 +929,14 @@ $("day").addEventListener("click", e => { if (e.target === $("day")) $("day").cl
 
 /* ---------- 시작 ---------- */
 function handleHash() {
+  const dev = PROFILE ? null : parseDevice(location.hash);
+  if (dev) {
+    history.replaceState(null, "", location.pathname + location.search);
+    if (data.mode === "me" && data.vault && data.vault.id === dev.id) return;
+    if (!confirm("이 기기를 마스터 기기로 추가할까요? 이 기기에 있던 기록은 합쳐져요.")) return;
+    joinDevice(dev).then(render, err => alert(err.message === "denied" ? "이미 쓴 링크예요. 마스터 기기에서 새로 만들어 주세요." : "연결하지 못했어요."));
+    return;
+  }
   const join = parseJoin(location.hash); if (!join) return;
   history.replaceState(null, "", location.pathname + location.search);
   if (data.mode === "partner" && data.partnerLink && data.partnerLink.id === join.id) return;
@@ -773,6 +950,7 @@ function handleHash() {
 window.addEventListener("hashchange", handleHash);
 function catchUp() {
   if (data.mode !== "me") return;
+  if (!PROFILE) { if (data.vault) { watchVault(); scheduleVault(0); } else ensureVault(); }
   scheduleSync(0);
   if (NOTIFY && data.myShare && !(data.notify && data.notify.claimed)) ensureChannel().catch(() => {});
   scheduleReminders(0);
