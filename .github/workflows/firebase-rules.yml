@@ -1,5 +1,6 @@
 # firebase/firestore.rules 를 Firebase에 배포한다. 규칙 파일이 바뀌어 main에 push되면 자동 실행.
 # 필요: 저장소 Secret FIREBASE_SERVICE_ACCOUNT (서비스 계정 JSON), Variable FIREBASE_PROJECT_ID
+# 키가 없으면 실패하지 않고 건너뜀 → 그때는 Firebase 콘솔 규칙 탭에 직접 붙여 넣기
 name: Deploy Firestore rules
 
 on:
@@ -19,18 +20,35 @@ jobs:
       run:
         working-directory: firebase
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Write service account key
+      - name: Check service account key
+        id: key
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+        run: |
+          if [ -z "$SA_JSON" ]; then
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT 비밀값이 없어서 규칙 자동 배포를 건너뛰어요. Firebase 콘솔 → Firestore → 규칙 탭에 firebase/firestore.rules 를 직접 붙여 넣어 주세요."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          elif ! printf '%s' "$SA_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('type')=='service_account' and d.get('private_key')"; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT 값이 서비스 계정 JSON이 아니에요. 다운로드한 JSON 파일 내용 전체를 그대로 붙여 넣어 주세요."
+            exit 1
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: .
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+
+      - uses: google-github-actions/auth@v2
+        if: steps.key.outputs.ok == 'true'
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          node-version: 20
+
       - name: Deploy rules
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        if: steps.key.outputs.ok == 'true'
         run: npx -y firebase-tools@13.29.1 deploy --only firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
-      - name: Remove key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/sa.json"
