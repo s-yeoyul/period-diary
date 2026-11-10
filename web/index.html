@@ -11,7 +11,22 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>캘린더</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+  // 글꼴이 준비될 때까지 화면을 잠깐 숨김 (기본 글꼴이 먼저 보였다가 바뀌는 것 방지). 최대 1.5초
+  document.documentElement.classList.add("fonts-wait");
+  (function () {
+    var done = function () { document.documentElement.classList.remove("fonts-wait"); };
+    setTimeout(done, 1500);
+    if (document.fonts && document.fonts.load)
+      Promise.all([document.fonts.load("16px Hippie"), document.fonts.load("16px WatermelonYang")]).then(done, done);
+    else done();
+  })();
+</script>
 <style>
+html.fonts-wait body{visibility:hidden}
 /* 폰트: 제목 히피체, 내용 WatermelonYang (눈누) */
 @font-face{font-family:'WatermelonYang';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2') format('woff2');font-weight:normal;font-display:swap}
 @font-face{font-family:'Hippie';src:url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2') format('woff2');font-weight:400;font-display:swap}

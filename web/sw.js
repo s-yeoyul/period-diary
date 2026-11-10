@@ -3,20 +3,38 @@
 const VERSION = "calendar-v4";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./firebase-config.js", "./notify-config.js", "./holidays.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+// 글꼴은 버전이 바뀌어도 지우지 않는 별도 보관함에 저장 (한 번 받으면 다음부터 바로 꺼내 씀)
+const FONT_CACHE = "fonts-v1";
+const FONTS = [
+  "https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_%ED%9E%88%ED%94%BC%EC%B2%B4.woff2",
+  "https://cdn.jsdelivr.net/gh/projectnoonnu/2408-4@1.0/RixXladywatermelonR.woff2"
+];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(Promise.all([
+    caches.open(VERSION).then(c => c.addAll(ASSETS)),
+    // 글꼴 미리 저장 (실패해도 설치는 계속)
+    caches.open(FONT_CACHE).then(c => Promise.all(FONTS.map(u => c.match(u).then(hit => hit || c.add(new Request(u, { mode: "cors" })))))).catch(() => {})
+  ]).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== FONT_CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
 // 네트워크 우선, 실패하면 캐시
 self.addEventListener("fetch", e => {
   const req = e.request;
+  // 글꼴: 저장된 게 있으면 바로, 없으면 받아서 저장
+  if (req.method === "GET" && FONTS.includes(req.url)) {
+    e.respondWith(caches.open(FONT_CACHE).then(c => c.match(req.url).then(hit => hit || fetch(req).then(res => {
+      if (res.ok) c.put(req.url, res.clone());
+      return res;
+    }))));
+    return;
+  }
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     fetch(req).then(res => {
