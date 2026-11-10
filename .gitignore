@@ -1,0 +1,17 @@
+.DS_Store
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+# Firebase
+firebase/*-debug.log
+firebase/.firebase/
+*-service-account*.json
+# 로컬 테스트용
+.claude/
+.dev.vars
+worker/.wrangler/
+node_modules/
+
+# 저장소에 올리지 않는 개인 파일 (문서, 아이폰 앱)
+private/

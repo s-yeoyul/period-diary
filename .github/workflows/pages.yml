@@ -1,0 +1,50 @@
+# web/ 폴더를 GitHub Pages에 배포한다. main에 push하면 자동 실행.
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # 배포할 때마다 서비스워커 캐시 이름을 바꿔서 사용자 폰에 새 버전이 반영되게 함
+      - name: Stamp service worker version
+        run: sed -i "s/const VERSION = \"calendar-[^\"]*\"/const VERSION = \"calendar-${GITHUB_SHA::7}\"/" web/sw.js
+
+      # Firebase 설정이 비어 있으면 배포를 막음 (공유 기능이 안 되는 채로 올라가는 것 방지)
+      - name: Check Firebase config
+        run: |
+          if grep -q "window.FIREBASE_CONFIG = null" web/firebase-config.js; then
+            echo "::error::web/firebase-config.js 에 Firebase 설정을 넣어 주세요."; exit 1
+          fi
+
+      - name: Check notify config
+        run: |
+          if grep -q "window.NOTIFY_CONFIG = null" web/notify-config.js; then
+            echo "::warning::web/notify-config.js 가 비어 있어서 알림 기능 없이 배포돼요."
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

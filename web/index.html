@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="캘린더">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>캘린더</title>
+<style>
+:root{--bg:#fff;--text:#111;--sub:#888;--line:#e5e5e5;--red:#e5484d;--zone:#d6f0ee;--mid:#2a9d8f;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#111;--text:#eee;--sub:#888;--line:#2a2a2a;--zone:#1d3b38;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,system-ui,sans-serif;
+  padding:env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom))}
+.wrap{max-width:480px;margin:0 auto}
+button{font:inherit;color:inherit;background:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+input[type=text]{font:inherit;font-size:16px;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
+.tabs{display:flex;gap:0;margin:16px 0}
+.tabs button{flex:1;border-radius:0}
+.tabs button:first-child{border-radius:8px 0 0 8px}
+.tabs button:last-child{border-radius:0 8px 8px 0;border-left:0}
+.tabs button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.status{font-size:20px;font-weight:700;margin:0}
+.sub{color:var(--sub);font-size:14px;margin:4px 0 0}
+.head{display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px}
+.head b{font-size:17px}
+.head button{border:0;font-size:20px;padding:4px 12px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.wd{font-size:12px;color:var(--sub);padding:4px 0}
+.day{border:0;padding:2px 0;height:48px;display:flex;flex-direction:column;align-items:center;border-radius:0}
+.day .n{width:34px;height:34px;line-height:30px;border-radius:50%;border:2px solid transparent;font-size:15px}
+.day .h{font-size:9px;line-height:10px;height:10px;color:var(--red)}
+.day.today .n{font-weight:800;text-decoration:underline}
+.day.zone .n{background:var(--zone)}
+.day.mid .n{border-color:var(--mid)}
+.day.plan .n{border:2px dashed var(--red)}
+.day.red .n{background:var(--red);border-color:var(--red);color:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sub);margin:8px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+section{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}
+section h2{font-size:15px;margin:0 0 8px}
+.row{display:flex;gap:8px;margin-top:8px}
+.row input{flex:1}
+.danger{color:var(--red);border:0;padding:8px 0}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);padding:20px;width:min(320px,90vw)}
+dialog::backdrop{background:rgba(0,0,0,.3)}
+dialog h3{margin:0 0 12px}
+.check{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:17px;border-bottom:1px solid var(--line)}
+.check input{width:22px;height:22px;accent-color:var(--red)}
+dialog .row button{flex:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button data-view="me">내 캘린더</button>
+    <button data-view="partner">파트너</button>
+  </div>
+  <div id="view"></div>
+</div>
+
+<dialog id="day">
+  <h3 id="day-title"></h3>
+  <label class="check"><input type="checkbox" id="chk-red"> 빨간 날</label>
+  <label class="check"><input type="checkbox" id="chk-heart"> ♥</label>
+  <div class="row"><button id="day-close">닫기</button></div>
+</dialog>
+
+<script src="firebase-config.js"></script>
+<script src="notify-config.js"></script>
+<script>
+"use strict";
+/* ---------- 날짜 ---------- */
+const pad = n => String(n).padStart(2, "0");
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dateOf = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const diffDays = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+const md = d => `${d.getMonth() + 1}월 ${d.getDate()}일`;
+const short = d => `${d.getMonth() + 1}/${d.getDate()}`;
+const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+const isoNow = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+const fmtTime = iso => { const d = new Date(iso); return isNaN(d) ? "" : `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+/* ---------- 저장 (이 기기 안) ---------- */
+const STORAGE_KEY = "calendar-v1";
+const DEFAULT_GAP = 28, DEFAULT_LEN = 5;
+const isRed = l => !!(l && l.r);
+
+function cleanLogs(raw) {
+  const out = {};
+  for (const [k, v] of Object.entries(raw && typeof raw === "object" ? raw : {})) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v) continue;
+    const l = { r: v.r === true, h: v.h === true };
+    if (l.r || l.h) out[k] = l;
+  }
+  return out;
+}
+function load() {
+  // myShare: 내가 올리는 공유 {id, key, fp}, partnerLink: 내가 보는 파트너 공유 {id, key}
+  const base = { logs: {}, partner: null, myShare: null, partnerLink: null };
+  try {
+    const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    return p ? { ...base, ...p, logs: cleanLogs(p.logs) } : base;
+  } catch { return base; }
+}
+let data = load(), engine, partnerEngine;
+
+function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
+function rebuild() {
+  engine = makeEngine(data.logs);
+  partnerEngine = data.partner ? makeEngine(data.partner.logs) : null;
+}
+function save() { persist(); rebuild(); scheduleSync(); scheduleReminders(); }
+
+/* ---------- 예측 ----------
+   최근 6번의 평균 간격으로 다음 시작일 예측, 중심일 = 다음 시작 14일 전, 구간 = 중심일 5일 전 ~ 1일 후 */
+function makeEngine(logs, now = today()) {
+  const dates = Object.keys(logs).filter(k => isRed(logs[k])).sort().map(dateOf);
+  const runs = [];
+  for (const d of dates) {
+    const last = runs[runs.length - 1];
+    if (last && diffDays(last.end, d) <= 2) last.end = d; else runs.push({ start: d, end: d });
+  }
+  const gaps = runs.slice(1).map((r, i) => diffDays(runs[i].start, r.start)).filter(g => g >= 15 && g <= 60).slice(-6);
+  const avgGap = gaps.length ? Math.round(avg(gaps)) : DEFAULT_GAP;
+  const done = runs.filter(r => diffDays(r.end, now) >= 2).slice(-6);
+  const avgLen = Math.min(14, Math.max(1, done.length ? Math.round(avg(done.map(r => diffDays(r.start, r.end) + 1))) : DEFAULT_LEN));
+
+  const mids = [], starts = [];
+  runs.slice(1).forEach((r, i) => { const g = diffDays(runs[i].start, r.start); if (g >= 15 && g <= 60) mids.push(addDays(r.start, -14)); });
+  let expected = null;
+  if (runs.length) {
+    expected = addDays(runs[runs.length - 1].start, avgGap);
+    mids.push(addDays(expected, -14));
+    let s = expected < now ? now : expected;
+    for (let i = 0; i < 6; i++) { starts.push(s); s = addDays(s, avgGap); }
+    starts.slice(1).forEach(s => mids.push(addDays(s, -14)));
+  }
+  mids.sort((a, b) => a - b);
+  const plan = new Set(), zone = new Set(), mid = new Set();
+  starts.forEach(s => { for (let j = 0; j < avgLen; j++) plan.add(keyOf(addDays(s, j))); });
+  mids.forEach(o => { mid.add(keyOf(o)); for (let j = -5; j <= 1; j++) zone.add(keyOf(addDays(o, j))); });
+  const last = runs[runs.length - 1];
+  const runAt = d => runs.find(r => d >= r.start && d <= r.end);
+
+  return {
+    runs, avgGap, usesDefault: !gaps.length, plan, zone, mid, starts, mids,
+    phase(d) {
+      if (!runs.length) return { type: "none" };
+      const r = runAt(d);
+      if (r) return { type: "red", n: diffDays(r.start, d) + 1 };
+      if (d > expected && d > last.end) return { type: "late", n: diffDays(expected, d) };
+      if (mid.has(keyOf(d))) return { type: "mid" };
+      if (zone.has(keyOf(d))) return { type: "zone" };
+      return { type: "regular" };
+    },
+    dayCount(d) { const r = [...runs].reverse().find(r => r.start <= d); return r ? diffDays(r.start, d) + 1 : null; },
+    nextStart(d) {
+      if (last && d >= last.start && d <= last.end) return starts.find(s => s > last.end);
+      return starts.find(s => s >= d);
+    },
+    zoneWindow(d) { const o = mids.find(o => addDays(o, 1) >= d); return o && { start: addDays(o, -5), end: addDays(o, 1) }; }
+  };
+}
+
+/* ---------- 실시간 공유 (Firebase) ----------
+   서버에는 폰에서 암호화한 데이터만 올라감. 열쇠는 공유 링크의 # 뒤에만 있어서 서버는 내용을 볼 수 없음 */
+const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+const Cloud = {
+  configured: !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId),
+  _p: null,
+  load() {
+    if (!this.configured) return Promise.reject(new Error("not-configured"));
+    return this._p ||= (async () => {
+      const [{ initializeApp }, fs, au] = await Promise.all([
+        import(SDK + "firebase-app.js"), import(SDK + "firebase-firestore.js"), import(SDK + "firebase-auth.js")]);
+      const { useEmulator, ...cfg } = window.FIREBASE_CONFIG;
+      const app = initializeApp(cfg), db = fs.getFirestore(app), auth = au.getAuth(app);
+      if (useEmulator) {
+        fs.connectFirestoreEmulator(db, "127.0.0.1", 8080);
+        au.connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+      }
+      return { fs, au, db, auth };
+    })().catch(e => { this._p = null; throw e; });
+  },
+  async uid() {
+    const { au, auth } = await this.load();
+    await auth.authStateReady();
+    if (!auth.currentUser) await au.signInAnonymously(auth); // 익명 로그인: 내 공유만 내가 고칠 수 있게
+    return auth.currentUser.uid;
+  },
+  async put(id, payload) {
+    const { fs, db } = await this.load();
+    await fs.setDoc(fs.doc(db, "shares", id), { owner: await this.uid(), v: 1, ...payload, updatedAt: fs.serverTimestamp() });
+  },
+  async remove(id) { const { fs, db } = await this.load(); await this.uid(); await fs.deleteDoc(fs.doc(db, "shares", id)); },
+  async watch(id, onData, onError) {
+    const { fs, db } = await this.load();
+    return fs.onSnapshot(fs.doc(db, "shares", id), s => onData(s.exists() ? s.data() : null), onError);
+  }
+};
+
+const b64url = bytes => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64url = str => Uint8Array.from(atob(str.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((str.length + 3) % 4)), c => c.charCodeAt(0));
+const Crypt = {
+  async newKey() {
+    const k = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+    return b64url(new Uint8Array(await crypto.subtle.exportKey("raw", k)));
+  },
+  key: k => crypto.subtle.importKey("raw", unb64url(k), "AES-GCM", false, ["encrypt", "decrypt"]),
+  async encrypt(k, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await this.key(k), new TextEncoder().encode(JSON.stringify(obj)));
+    return { iv: b64url(iv), ct: b64url(new Uint8Array(ct)) };
+  },
+  async decrypt(k, { iv, ct }) {
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64url(iv) }, await this.key(k), unb64url(ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+};
+
+const shareLink = () => data.myShare && `${location.origin}${location.pathname}#s=${data.myShare.id}.${data.myShare.key}`;
+// notifyId: 파트너가 내 알림을 구독할 때 쓰는 채널 ID (암호화된 공유 데이터 안에만 들어감)
+const snapshot = () => ({ format: "cal", version: 1, kind: "share", name: "", exportedAt: isoNow(), logs: data.logs,
+  gap: DEFAULT_GAP, len: DEFAULT_LEN, notifyId: data.notify && data.notify.claimed ? data.notify.id : null });
+const shareFp = () => JSON.stringify([data.logs, data.notify && data.notify.claimed ? data.notify.id : null]);
+const sync = { timer: null, unsub: null, live: false, gone: false, error: "" };
+
+function scheduleSync(delay = 800) {
+  if (!data.myShare || !Cloud.configured) return;
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(pushShare, delay);
+}
+async function pushShare() {
+  const share = data.myShare; if (!share) return;
+  const fp = shareFp();
+  if (fp === share.fp) return; // 바뀐 게 없으면 올리지 않음
+  try {
+    await Cloud.put(share.id, await Crypt.encrypt(share.key, snapshot()));
+    share.fp = fp; share.at = isoNow(); sync.error = ""; persist();
+  } catch (e) {
+    sync.error = e.code === "permission-denied" ? "이 기기에서 공유를 수정할 권한이 없어요. 공유를 중지하고 새 링크를 만들어 주세요." : "인터넷 연결 후 자동으로 올려요.";
+  }
+  refresh();
+}
+async function createShare() {
+  const id = b64url(crypto.getRandomValues(new Uint8Array(15))), key = await Crypt.newKey();
+  await Cloud.put(id, await Crypt.encrypt(key, snapshot()));
+  data.myShare = { id, key, fp: shareFp(), at: isoNow() };
+  persist();
+}
+async function watchPartner() {
+  if (sync.unsub) { sync.unsub(); sync.unsub = null; }
+  sync.live = false; sync.gone = false;
+  const link = data.partnerLink;
+  if (!link || !Cloud.configured) return;
+  try {
+    sync.unsub = await Cloud.watch(link.id, async doc => {
+      if (!doc) { sync.gone = true; refresh(); return; }
+      try {
+        const snap = await Crypt.decrypt(link.key, doc);
+        data.partner = { exportedAt: String(snap.exportedAt || ""), logs: cleanLogs(snap.logs),
+                         notifyId: typeof snap.notifyId === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(snap.notifyId) ? snap.notifyId : null };
+        sync.live = true; sync.gone = false; persist(); rebuild();
+      } catch { sync.error = "파트너 데이터를 열지 못했어요. 링크를 다시 받아 주세요."; }
+      refresh();
+    }, () => { sync.live = false; refresh(); });
+  } catch { sync.live = false; }
+}
+function parseLink(text) {
+  const m = String(text || "").match(/#s=([A-Za-z0-9_-]{10,})\.([A-Za-z0-9_-]{40,})/);
+  return m && { id: m[1], key: m[2] };
+}
+function connectPartner(link) {
+  data.partnerLink = link; data.partner = null; persist(); rebuild(); watchPartner();
+}
+
+/* ---------- 알림 (Cloudflare Worker + Web Push) ----------
+   - 내 채널(data.notify): 내가 주인. 파트너 구독 + 내 예정일 알림 구독이 여기 붙음
+   - 빨간 날 기록이 바뀌면 /notify (파트너에게만, 서버가 10분에 1번으로 제한)
+   - 예정일 알림 날짜는 내 폰이 계산해서 /schedule 로 보냄 (날짜와 종류만) */
+const NOTIFY = window.NOTIFY_CONFIG && window.NOTIFY_CONFIG.workerUrl ? window.NOTIFY_CONFIG : null;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+const pushReady = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !(isIOS() && !isStandalone());
+const randId = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+
+async function api(path, body) {
+  const res = await fetch(NOTIFY.workerUrl.replace(/\/$/, "") + path, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(json.error || "http"), { status: res.status });
+  return json;
+}
+
+async function ensureChannel() {
+  if (!data.notify) { data.notify = { id: randId(18), token: randId(32), claimed: false }; persist(); }
+  if (!data.notify.claimed) {
+    await api("/claim", { id: data.notify.id, token: data.notify.token });
+    data.notify.claimed = true; persist();
+    scheduleSync(0); // 공유 데이터에 채널 ID를 넣어 파트너에게 전달
+  }
+  return data.notify;
+}
+
+async function currentSubscription(ask) {
+  if (Notification.permission !== "granted") {
+    if (!ask) return null;
+    if (await Notification.requestPermission() !== "granted") throw new Error("denied");
+  }
+  const reg = await navigator.serviceWorker.ready;
+  return (await reg.pushManager.getSubscription())
+    || (ask ? reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64url(NOTIFY.vapidPublicKey) }) : null);
+}
+
+async function enablePush(role) {
+  const sub = (await currentSubscription(true)).toJSON(); // 권한 요청은 버튼을 누른 직후에 해야 해서 맨 먼저
+  if (role === "self") {
+    const ch = await ensureChannel();
+    await api("/subscribe", { id: ch.id, token: ch.token, role, subscription: sub });
+    data.pushSelf = true;
+  } else {
+    const nid = data.partner && data.partner.notifyId;
+    if (!nid) throw new Error("no-channel");
+    await api("/subscribe", { id: nid, role, subscription: sub });
+    data.pushPartner = nid;
+  }
+  persist();
+  scheduleReminders(0);
+}
+
+async function disablePush(role) {
+  try {
+    const sub = await currentSubscription(false);
+    const id = role === "self" ? data.notify && data.notify.id : data.pushPartner;
+    if (sub && id) await api("/unsubscribe", { id, role, endpoint: sub.endpoint });
+    const otherOn = role === "self" ? !!data.pushPartner : !!data.pushSelf;
+    if (sub && !otherOn) await sub.unsubscribe();
+  } catch {}
+  if (role === "self") data.pushSelf = false; else data.pushPartner = null;
+  persist();
+}
+
+// 공유를 중지하면 채널을 새로 만들어 기존 파트너 구독을 끊음 (내 예정일 알림은 유지)
+async function rotateChannel() {
+  const old = data.notify;
+  data.notify = null; persist();
+  if (old && old.claimed) api("/delete", { id: old.id, token: old.token }).catch(() => {});
+  if (!data.pushSelf || !NOTIFY) return;
+  try {
+    const sub = await currentSubscription(false);
+    if (!sub) { data.pushSelf = false; persist(); return; }
+    const ch = await ensureChannel();
+    await api("/subscribe", { id: ch.id, token: ch.token, role: "self", subscription: sub.toJSON() });
+    scheduleReminders(0);
+  } catch {}
+}
+
+let notifyTimer = null;
+function queueUpdateNotify() {
+  if (!NOTIFY || !data.myShare || !data.notify || !data.notify.claimed) return;
+  data.pendingNotify = true; persist();
+  clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(sendUpdateNotify, 5000); // 연달아 체크하면 마지막 체크 5초 뒤 한 번
+}
+async function sendUpdateNotify() {
+  if (!data.pendingNotify || !data.notify || !data.notify.claimed) return;
+  try { await api("/notify", { id: data.notify.id, token: data.notify.token }); data.pendingNotify = false; persist(); } catch {}
+}
+
+function reminderItems() {
+  const t = today(), tk = keyOf(t), items = [];
+  if (!engine.runs.length) return items;
+  engine.starts.slice(0, 2).forEach(s => {
+    items.push({ date: keyOf(addDays(s, -2)), kind: "pre2" }, { date: keyOf(s), kind: "start" });
+  });
+  engine.mids.map(o => addDays(o, -5)).filter(d => d >= t).slice(0, 2)
+    .forEach(d => items.push({ date: keyOf(d), kind: "zone" }));
+  return items.filter(i => i.date >= tk).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+let reminderTimer = null;
+function scheduleReminders(delay = 2000) {
+  if (!NOTIFY || !data.notify || !data.notify.claimed) return;
+  clearTimeout(reminderTimer);
+  reminderTimer = setTimeout(pushReminders, delay);
+}
+async function pushReminders() {
+  const items = reminderItems(), fp = JSON.stringify(items);
+  if (fp === data.notify.schedFp) return;
+  try { await api("/schedule", { id: data.notify.id, token: data.notify.token, items }); data.notify.schedFp = fp; persist(); } catch {}
+}
+
+function notifyError(e) {
+  if (e.message === "denied") return "알림이 꺼져 있어요. 아이폰 설정 → 알림 → 캘린더에서 허용해 주세요.";
+  if (e.message === "no-channel") return "파트너 쪽 알림 기능이 아직 준비되지 않았어요. 잠시 후 다시 시도해 주세요.";
+  return "알림을 켜지 못했어요. 인터넷 연결을 확인해 주세요.";
+}
+
+/* ---------- 화면 ---------- */
+const state = { view: "me", month: { me: today(), partner: today() }, dayKey: null };
+const $ = id => document.getElementById(id);
+
+function statusHtml(e) {
+  const t = today(), ph = e.phase(t);
+  if (ph.type === "none") return `<p class="status">날짜를 눌러 빨간 날을 기록하세요</p><p class="sub">기록이 쌓이면 다음 빨간 날과 초록 구간을 계산해요.</p>`;
+  const next = e.nextStart(t), w = e.zoneWindow(t);
+  const head = { red: `빨간 날 ${ph.n}일째`, late: `예정보다 ${ph.n}일 늦음`, mid: "오늘 초록 중심일", zone: "초록 구간",
+                 regular: next ? (diffDays(t, next) === 0 ? "오늘 빨간 날 예정" : `빨간 날까지 ${diffDays(t, next)}일`) : "" }[ph.type];
+  const parts = [`시작 후 ${e.dayCount(t)}일째`];
+  if (next) parts.push(`다음 빨간 날 ${md(next)}`);
+  if (w) parts.push(`초록 구간 ${short(w.start)}~${short(w.end)}`);
+  parts.push(`평균 간격 ${e.avgGap}일${e.usesDefault ? "(기본값)" : ""}`);
+  return `<p class="status">${head}</p><p class="sub">${parts.join(" · ")}</p>`;
+}
+
+function calendarHtml(scope, e, logs, editable) {
+  const m = state.month[scope], y = m.getFullYear(), mo = m.getMonth(), t = today();
+  let cells = WD.map(w => `<div class="wd">${w}</div>`).join("");
+  for (let i = 0; i < new Date(y, mo, 1).getDay(); i++) cells += "<div></div>";
+  for (let d = 1; d <= new Date(y, mo + 1, 0).getDate(); d++) {
+    const date = new Date(y, mo, d), k = keyOf(date), l = logs[k];
+    const c = ["day"];
+    if (isRed(l)) c.push("red");
+    else if (e.plan.has(k)) c.push("plan");
+    else if (e.mid.has(k)) c.push("mid");
+    else if (e.zone.has(k)) c.push("zone");
+    if (diffDays(date, t) === 0) c.push("today");
+    cells += `<button class="${c.join(" ")}" ${editable ? `data-day="${k}"` : "disabled"}><span class="n">${d}</span><span class="h">${l && l.h ? "♥" : ""}</span></button>`;
+  }
+  return `<div class="head"><button data-month="${scope}" data-delta="-1">‹</button><b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1">›</button></div>
+    <div class="grid">${cells}</div>
+    <div class="legend"><span><i style="background:var(--red)"></i>빨간 날</span><span><i style="border:2px dashed var(--red)"></i>예정</span>
+    <span><i style="background:var(--zone)"></i>초록 구간</span><span><i style="border:2px solid var(--mid)"></i>중심일</span><span style="color:var(--red)">♥</span></div>`;
+}
+
+function meView() {
+  let share;
+  if (!Cloud.configured) share = `<p class="sub">파트너 공유를 쓰려면 firebase-config.js 설정이 필요해요.</p>`;
+  else if (!data.myShare) share = `<p class="sub">링크를 받은 파트너는 내 캘린더를 실시간으로 볼 수 있어요.</p><div class="row"><button data-action="share-create">공유 링크 만들기</button></div>`;
+  else share = `<p class="sub">공유 중 · 기록을 바꾸면 파트너 화면에 자동 반영돼요.${sync.error ? `<br>${sync.error}` : ""}</p>
+    <div class="row"><input type="text" id="share-url" readonly value="${shareLink()}"><button data-action="share-send">보내기</button></div>
+    <button class="danger" data-action="share-stop">공유 중지</button>`;
+  return statusHtml(engine) + calendarHtml("me", engine, data.logs, true) + `<section><h2>파트너와 공유</h2>${share}</section>` + notifySection("self");
+}
+
+function notifySection(role) {
+  if (!NOTIFY) return "";
+  const title = role === "self" ? "내 예정일 알림" : "파트너 알림";
+  const desc = role === "self" ? "빨간 날 2일 전 · 예정일 · 초록 구간 시작일 오전 9시에 알려 드려요."
+                               : "파트너가 빨간 날 기록을 바꾸거나 파트너의 예정일이 다가오면 알려 드려요.";
+  let body;
+  if (!pushReady()) body = `<p class="sub">${desc}<br>홈 화면에 추가한 앱에서 켤 수 있어요 (iOS 16.4 이상).</p>`;
+  else if (role === "partner" && !(data.partner && data.partner.notifyId)) body = `<p class="sub">파트너 쪽에서 알림 기능이 아직 준비되지 않았어요.</p>`;
+  else {
+    const on = role === "self" ? !!data.pushSelf : !!data.pushPartner && data.pushPartner === data.partner.notifyId;
+    body = `<p class="sub">${desc}</p><div class="row"><button data-action="push-${role}" data-on="${on ? 1 : 0}">${on ? "알림 끄기" : "알림 받기"}</button></div>`;
+  }
+  return `<section><h2>${title}</h2>${body}</section>`;
+}
+
+function partnerView() {
+  if (!Cloud.configured) return `<p class="sub">파트너 공유를 쓰려면 firebase-config.js 설정이 필요해요.</p>`;
+  if (!data.partnerLink) return `<p class="status">파트너 캘린더 연결</p><p class="sub">파트너가 보낸 공유 링크를 붙여 넣으세요.</p>
+    <div class="row"><input type="text" id="link-in" placeholder="https://…#s=…"><button data-action="connect">연결</button></div>`;
+  const info = sync.gone ? "파트너가 공유를 중지했어요."
+    : sync.error ? sync.error
+    : !data.partner ? "불러오는 중…"
+    : `${sync.live ? "실시간 연결됨" : "오프라인 · 마지막으로 받은 내용"} · ${fmtTime(data.partner.exportedAt)} 업데이트`;
+  return (partnerEngine ? statusHtml(partnerEngine) + calendarHtml("partner", partnerEngine, data.partner.logs, false) : "")
+    + (data.partner && !sync.gone ? notifySection("partner") : "")
+    + `<section><p class="sub">${info}</p><button class="danger" data-action="disconnect">연결 끊기</button></section>`;
+}
+
+function render() {
+  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === state.view));
+  $("view").innerHTML = state.view === "me" ? meView() : partnerView();
+}
+// 입력 중일 때는 화면을 다시 그리지 않음
+function refresh() { if (!$("day").open && document.activeElement?.id !== "link-in") render(); }
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener("click", async e => {
+  const el = e.target.closest("button"); if (!el) return;
+  if (el.dataset.view) { state.view = el.dataset.view; render(); return; }
+  if (el.dataset.month) { const s = el.dataset.month, m = state.month[s]; state.month[s] = new Date(m.getFullYear(), m.getMonth() + Number(el.dataset.delta), 1); render(); return; }
+  if (el.dataset.day) { openDay(el.dataset.day); return; }
+  switch (el.dataset.action) {
+    case "share-create":
+      el.disabled = true; el.textContent = "만드는 중…";
+      if (NOTIFY) await ensureChannel().catch(() => {}); // 알림 채널 ID를 공유 데이터에 함께 넣기 위해 먼저
+      try { await createShare(); scheduleReminders(0); } catch { alert("공유 링크를 만들지 못했어요. 인터넷 연결과 Firebase 설정을 확인해 주세요."); }
+      render(); break;
+    case "push-self":
+    case "push-partner": {
+      const role = el.dataset.action === "push-self" ? "self" : "partner";
+      el.disabled = true;
+      try { el.dataset.on === "1" ? await disablePush(role) : await enablePush(role); }
+      catch (err) { alert(notifyError(err)); }
+      render(); break;
+    }
+    case "share-send": {
+      const url = shareLink();
+      if (navigator.share) navigator.share({ url }).catch(() => {});
+      else { $("share-url").select(); navigator.clipboard?.writeText(url).then(() => alert("링크를 복사했어요."), () => document.execCommand("copy")); }
+      break;
+    }
+    case "share-stop":
+      if (!confirm("공유를 중지할까요? 파트너는 더 이상 내 캘린더를 볼 수 없어요.")) return;
+      try { await Cloud.remove(data.myShare.id); } catch {}
+      data.myShare = null; data.pendingNotify = false; persist();
+      await rotateChannel();
+      render(); break;
+    case "connect": {
+      const link = parseLink($("link-in").value);
+      if (!link) { alert("공유 링크가 아니에요. 링크 전체를 붙여 넣어 주세요."); return; }
+      connectPartner(link); render(); break;
+    }
+    case "disconnect":
+      if (!confirm("파트너 캘린더 연결을 끊을까요?")) return;
+      if (data.pushPartner) await disablePush("partner");
+      data.partnerLink = null; data.partner = null; persist(); rebuild(); watchPartner(); render(); break;
+  }
+});
+
+function openDay(k) {
+  state.dayKey = k;
+  const d = dateOf(k), l = data.logs[k];
+  $("day-title").textContent = `${md(d)} (${WD[d.getDay()]})`;
+  $("chk-red").checked = isRed(l);
+  $("chk-heart").checked = !!(l && l.h);
+  $("day").showModal();
+}
+function updateDay() {
+  const k = state.dayKey;
+  const l = { r: $("chk-red").checked, h: $("chk-heart").checked };
+  const redChanged = isRed(data.logs[k]) !== l.r;
+  if (l.r || l.h) data.logs[k] = l; else delete data.logs[k];
+  save(); render();
+  if (redChanged) queueUpdateNotify(); // ♥만 바뀌면 알림 안 보냄
+}
+$("chk-red").addEventListener("change", updateDay);
+$("chk-heart").addEventListener("change", updateDay);
+$("day-close").addEventListener("click", () => $("day").close());
+$("day").addEventListener("click", e => { if (e.target === $("day")) $("day").close(); });
+
+/* ---------- 시작 ---------- */
+function handleHash() {
+  const link = parseLink(location.hash); if (!link) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  if (data.partnerLink && data.partnerLink.id === link.id) { state.view = "partner"; render(); return; }
+  if (confirm("파트너 캘린더를 연결할까요?")) { connectPartner(link); state.view = "partner"; render(); }
+}
+window.addEventListener("hashchange", handleHash);
+function catchUp() {
+  scheduleSync(0);
+  if (NOTIFY && data.myShare && !(data.notify && data.notify.claimed)) ensureChannel().catch(() => {});
+  scheduleReminders(0);
+  if (data.pendingNotify) sendUpdateNotify();
+}
+window.addEventListener("online", () => { catchUp(); if (!sync.live) watchPartner(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  rebuild(); refresh(); catchUp();
+});
+// 알림을 눌러 열었을 때 해당 탭으로
+const tabParam = new URLSearchParams(location.search).get("tab");
+if (tabParam === "partner" || tabParam === "me") { state.view = tabParam; history.replaceState(null, "", location.pathname + location.hash); }
+navigator.serviceWorker?.addEventListener("message", e => {
+  if (e.data && (e.data.tab === "partner" || e.data.tab === "me")) { state.view = e.data.tab; render(); }
+});
+
+rebuild();
+render();
+handleHash();
+catchUp();
+watchPartner();
+navigator.storage?.persist?.().catch(() => {});
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

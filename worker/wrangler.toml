@@ -1,0 +1,22 @@
+# Cloudflare Worker 설정 — 알림 발송 서버
+name = "cal-push"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# 매일 00:00 UTC = 오전 9시(한국)에 예정일 알림 발송
+[triggers]
+crons = ["0 0 * * *"]
+
+# Cloudflare 대시보드 → Storage & Databases → KV 에서 만든 저장소 ID
+[[kv_namespaces]]
+binding = "PUSH"
+id = "91e9d6ff2da14c9493165db57cb2dce6"
+
+[vars]
+# 내 GitHub Pages 주소 (끝에 / 없이). 이 주소에서 온 요청만 받음
+ALLOWED_ORIGIN = "https://s-yeoyul.github.io"
+# VAPID 공개키 (web/notify-config.js 의 vapidPublicKey 와 같은 값)
+VAPID_PUBLIC_KEY = "BCPyh_Wbs0lKlquPf98BzmYWYDwl6K56174WRa8D5MdNoHLucGh7vL2bSAUeWll5whEx7SCc3ydI1flnAgxeJWA"
+
+# 비밀값 VAPID_PRIVATE_KEY 는 여기 쓰지 말 것.
+# GitHub Secret 에 넣으면 배포 워크플로가 Cloudflare 에 등록해 줌.

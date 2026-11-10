@@ -1,0 +1,37 @@
+# worker/ 를 Cloudflare Workers 에 배포한다. worker/ 가 바뀌어 main 에 push 되면 자동 실행.
+# 필요: Secret CLOUDFLARE_API_TOKEN, VAPID_PRIVATE_KEY / Variable CLOUDFLARE_ACCOUNT_ID
+name: Deploy notify worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check settings
+        working-directory: worker
+        run: |
+          if grep -q "REPLACE_WITH\|YOUR_GITHUB_ID" wrangler.toml; then
+            echo "::error::worker/wrangler.toml 의 REPLACE_WITH… / YOUR_GITHUB_ID 값을 채워 주세요."; exit 1
+          fi
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          wranglerVersion: "3.90.0"
+          secrets: |
+            VAPID_PRIVATE_KEY
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}

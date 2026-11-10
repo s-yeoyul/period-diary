@@ -1,0 +1,36 @@
+# firebase/firestore.rules 를 Firebase에 배포한다. 규칙 파일이 바뀌어 main에 push되면 자동 실행.
+# 필요: 저장소 Secret FIREBASE_SERVICE_ACCOUNT (서비스 계정 JSON), Variable FIREBASE_PROJECT_ID
+name: Deploy Firestore rules
+
+on:
+  push:
+    branches: [main]
+    paths: ["firebase/**", ".github/workflows/firebase-rules.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.FIREBASE_PROJECT_ID != '' }}
+    defaults:
+      run:
+        working-directory: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Write service account key
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx -y firebase-tools@13.29.1 deploy --only firestore:rules --project "${{ vars.FIREBASE_PROJECT_ID }}" --non-interactive
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
