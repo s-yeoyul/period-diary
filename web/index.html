@@ -138,7 +138,9 @@ svg{display:block}
 
 /* 오늘의 쥐 (시기 카드): 달력 아래, 사진 + 옆에 글. 사진 크기 = 그 폰에서 달력(6주 기준)을 그리고 남는 높이 */
 .phase{display:flex;align-items:center;gap:14px;margin:16px 0 0}
-.phase img{flex:none;width:var(--phase-size,128px);height:var(--phase-size,128px);object-fit:cover;border-radius:18px;background:var(--line)}
+/* svh = 주소창이 다 보일 때의 화면 높이 → 스크롤해도 사진 크기가 안 변함 */
+.phase{--phase-size:clamp(96px, calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--cal-h, 560px) - 50px), 200px)}
+.phase img{flex:none;width:var(--phase-size);height:var(--phase-size);object-fit:cover;border-radius:18px;background:var(--line)}
 .phase .txt{min-width:0}
 .phase h2{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:26px;line-height:1.15;margin:0}
 .phase .when{color:var(--sub);font-size:13px;margin-top:2px}
@@ -801,16 +803,17 @@ function phaseOf(e, logs, date = today()) {
   return { key: "calm", when: d ? `다음 ${T.period}까지 ${d}일` : "" };
 }
 // 사진 크기: 화면 높이 − (6주짜리 달력 끝 위치) − 아래 홈 바 자리. 달을 넘겨도 크기가 안 바뀌게 항상 6주 기준
-let insetProbe = null;
+// 오늘의 쥐 사진 크기 = 화면에서 6주짜리 달력을 빼고 남는 높이
+// JS는 달력 높이만 잼 (글꼴·줄 높이가 고정이라 언제 재도 같음). 화면 높이·위아래 안전 여백은 CSS가 직접 계산
+// → 아이폰이 앱을 막 열 때 화면 크기를 잠깐 틀리게 알려 줘도, 조작할 때 사진 크기가 갑자기 바뀌지 않음
 function sizePhase() {
-  const card = document.querySelector(".phase"), cal = document.querySelector(".cal");
-  if (!card || !cal) return;
-  if (!insetProbe) { insetProbe = document.createElement("div"); insetProbe.style.cssText = "position:fixed;visibility:hidden;height:env(safe-area-inset-bottom)"; document.body.appendChild(insetProbe); }
+  const cal = document.querySelector(".cal"), wrap = document.querySelector(".wrap");
+  if (!cal || !wrap || !document.querySelector(".phase")) return;
   const cur = cal.querySelector(".panel.cur"), dayH = (cur.querySelector(".day") || {}).offsetHeight || 68;
   const extraRows = 6 - Math.round(cur.offsetHeight / dayH);
-  const calBottom = cal.getBoundingClientRect().bottom + window.scrollY + extraRows * dayH;
-  const avail = window.innerHeight - calBottom - 16 - insetProbe.offsetHeight - 10;
-  document.documentElement.style.setProperty("--phase-size", Math.max(96, Math.min(200, Math.floor(avail))) + "px");
+  const calH = Math.round(cal.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top + extraRows * dayH);
+  const root = document.documentElement.style;
+  if (root.getPropertyValue("--cal-h") !== calH + "px") root.setProperty("--cal-h", calH + "px");
 }
 window.addEventListener("resize", () => sizePhase());
 
