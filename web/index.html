@@ -867,7 +867,7 @@ function calendarHtml(scope, e, logs, show, editable) {
   if (show.shave) lgIcon.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
   return `<div class="cal" data-scope="${scope}">
     <div class="cal-head"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button>
-      <label class="cal-title"><b>${y}년 ${mo + 1}월</b><input type="month" data-jump="${scope}" value="${y}-${String(mo + 1).padStart(2, "0")}" aria-label="연·월 고르기"></label><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
+      <div class="cal-title"><b>${y}년 ${mo + 1}월</b><input type="month" data-jump="${scope}" value="${y}-${String(mo + 1).padStart(2, "0")}" aria-label="연·월 고르기"></div><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
     <div class="grid">${WD.map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("")}</div>
     <div class="pager"><div class="track">${panel(-1, "")}${panel(0, " cur")}${panel(1, "")}</div></div>
     <div class="legend">${[lg, lgIcon].filter(r => r.length).map(r => `<div class="lg-row">${r.join("")}</div>`).join("")}</div></div>`;
@@ -1020,11 +1020,7 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("change", async e => {
   const el = e.target;
-  if (el.dataset && el.dataset.jump) { // 연·월 바로 이동
-    const [yy, mm] = el.value.split("-").map(Number);
-    if (yy && mm) { state.month[el.dataset.jump] = new Date(yy, mm - 1, 1); el.blur(); render(); }
-    return;
-  }
+  if (el.dataset && el.dataset.jump) return; // 돌리는 중에는 그대로 (닫을 때 이동)
   if (el.dataset && el.dataset.show) { data.show[el.dataset.show] = el.checked; stamp("show"); save(); return; }
   if (el.dataset && el.dataset.push) {
     const want = el.checked; el.disabled = true;
@@ -1061,6 +1057,14 @@ function slideMonth(cal, delta) {
 function snapBack(cal) {
   const track = trackOf(cal); if (track) setTrack(track, 0, true);
 }
+// 연·월 돌림판을 닫으면(✓) 그 달로 이동
+document.addEventListener("focusout", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.jump) return;
+  const [yy, mm] = (el.value || "").split("-").map(Number), cur = state.month[el.dataset.jump];
+  if (!yy || !mm || (cur.getFullYear() === yy && cur.getMonth() === mm - 1)) return;
+  state.month[el.dataset.jump] = new Date(yy, mm - 1, 1);
+  setTimeout(render, 0);
+});
 document.addEventListener("pointerdown", e => {
   const pagerEl = e.target.closest(".pager"); if (!pagerEl || pager.sliding || (e.pointerType === "mouse" && e.button !== 0)) return;
   const now = performance.now();
