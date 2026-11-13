@@ -1085,6 +1085,13 @@ document.addEventListener("pointermove", e => {
   d.dx = dx;
   setTrack(trackOf(d.cal), dx, false);
 });
+// 달력을 옆으로 넘기는 동안에는 화면이 위아래로 움직이지 않게 막음
+// 위아래로 먼저 움직인 손가락(= 평소 스크롤)은 건드리지 않음
+document.addEventListener("touchmove", e => {
+  const d = pager.drag; if (!d || !e.cancelable || e.touches.length !== 1) return;
+  const t = e.touches[0], dx = t.clientX - d.x, dy = t.clientY - d.y;
+  if (d.lock === "x" || (!d.lock && Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy) * 1.3)) e.preventDefault();
+}, { passive: false });
 function endDrag(e) {
   const d = pager.drag; if (!d || (e && e.pointerId !== d.id)) return;
   pager.drag = null;
