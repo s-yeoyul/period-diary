@@ -361,7 +361,8 @@ function makeEngine(logs, now = today()) {
     const last = runs[runs.length - 1];
     const first = addDays(last.start, Math.round(mu));
     const late = first < now && now > last.end ? diffDays(first, now) : 0; // 예정일이 지났으면 오늘부터로 밀기
-    for (let k = 1; k <= 6; k++) {
+    // 다음 쥐구멍 1번만 예측 (그 뒤는 실제 시작을 기록하면 그때 계산)
+    for (let k = 1; k <= 1; k++) {
       const c = addDays(last.start, Math.round(mu * k) + late);
       const half = Math.max(1, Math.round(q * sd * Math.sqrt(k)));
       starts.push(c);
