@@ -105,6 +105,9 @@ svg{display:block}
 .track.anim{transition:transform .32s cubic-bezier(.22,.61,.36,1)}
 .panel{width:33.3333%;flex:none;align-content:start}
 .cal-head{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:14px}
+.cal-title{position:relative;display:block;cursor:pointer}
+/* 제목 위에 보이지 않는 입력칸 → 누르면 아이폰 연·월 돌림판 */
+.cal-title input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;font-size:16px;-webkit-appearance:none;appearance:none}
 .cal-head b{font-family:'Hippie','WatermelonYang',sans-serif;font-weight:normal;font-size:40px;line-height:1;min-width:3.2em;text-align:center}
 .cal-head button{width:36px;height:36px;display:grid;place-items:center;color:var(--ink)}
 .cal-head svg{width:20px;height:20px}
@@ -864,7 +867,7 @@ function calendarHtml(scope, e, logs, show, editable) {
   if (show.shave) lgIcon.push(`<span><span class="ic-shave">${ICON.bush}</span>${T.shave}</span>`);
   return `<div class="cal" data-scope="${scope}">
     <div class="cal-head"><button data-month="${scope}" data-delta="-1" aria-label="이전 달">${ICON.left}</button>
-      <b>${y}년 ${mo + 1}월</b><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
+      <label class="cal-title"><b>${y}년 ${mo + 1}월</b><input type="month" data-jump="${scope}" value="${y}-${String(mo + 1).padStart(2, "0")}" aria-label="연·월 고르기"></label><button data-month="${scope}" data-delta="1" aria-label="다음 달">${ICON.right}</button></div>
     <div class="grid">${WD.map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("")}</div>
     <div class="pager"><div class="track">${panel(-1, "")}${panel(0, " cur")}${panel(1, "")}</div></div>
     <div class="legend">${[lg, lgIcon].filter(r => r.length).map(r => `<div class="lg-row">${r.join("")}</div>`).join("")}</div></div>`;
@@ -1017,6 +1020,11 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("change", async e => {
   const el = e.target;
+  if (el.dataset && el.dataset.jump) { // 연·월 바로 이동
+    const [yy, mm] = el.value.split("-").map(Number);
+    if (yy && mm) { state.month[el.dataset.jump] = new Date(yy, mm - 1, 1); el.blur(); render(); }
+    return;
+  }
   if (el.dataset && el.dataset.show) { data.show[el.dataset.show] = el.checked; stamp("show"); save(); return; }
   if (el.dataset && el.dataset.push) {
     const want = el.checked; el.disabled = true;
