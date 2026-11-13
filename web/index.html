@@ -1057,9 +1057,14 @@ function slideMonth(cal, delta) {
 function snapBack(cal) {
   const track = trackOf(cal); if (track) setTrack(track, 0, true);
 }
-// 연·월 돌림판을 닫으면(✓) 그 달로 이동
+// 연·월 돌림판을 닫으면(✓) 그 달로 이동, 바깥을 눌러 닫으면 취소
+// ✓ 는 아이폰 자체 버튼이라 페이지에 터치가 안 옴 / 바깥을 누르면 페이지에 터치가 먼저 옴 → 그걸로 구분
+let lastPageTouch = 0;
+document.addEventListener("touchstart", e => { if (!(e.target.dataset && e.target.dataset.jump)) lastPageTouch = Date.now(); }, { capture: true, passive: true });
+document.addEventListener("mousedown", e => { if (!(e.target.dataset && e.target.dataset.jump)) lastPageTouch = Date.now(); }, true);
 document.addEventListener("focusout", e => {
   const el = e.target; if (!el.dataset || !el.dataset.jump) return;
+  if (Date.now() - lastPageTouch < 600) { el.value = el.defaultValue; return; } // 바깥 누름 = 취소
   const [yy, mm] = (el.value || "").split("-").map(Number), cur = state.month[el.dataset.jump];
   if (!yy || !mm || (cur.getFullYear() === yy && cur.getMonth() === mm - 1)) return;
   state.month[el.dataset.jump] = new Date(yy, mm - 1, 1);
