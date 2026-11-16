@@ -379,6 +379,7 @@ function makeEngine(logs, now = today()) {
       const half = Math.max(1, Math.round(q * sd * Math.sqrt(k)));
       starts.push(c);
       for (let j = 0; j < len; j++) plan.add(keyOf(addDays(c, j)));
+      if (late) for (let d = first; d < c; d = addDays(d, 1)) plan.add(keyOf(d)); // 늦어지면 원래 예정일부터 이어서
       for (let j = -half; j <= half + len - 1; j++) { const d = addDays(c, j); if (d > last.end && d >= now) maybe.add(keyOf(d)); }
       mids.push(addDays(c, -lut));
     }
