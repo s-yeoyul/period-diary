@@ -120,6 +120,8 @@ svg{display:block}
 .day .n>span{position:relative}
 .day.hol .n{color:var(--holiday)}
 .day.today .n>span{font-weight:700}
+/* 쥐구멍 입장(예정일): 둥근 네모 */
+.day.due .n::after{content:"";position:absolute;inset:3px;border:2px solid #A52422;border-radius:10px;pointer-events:none}
 .day.today:not(.anniv) .n::before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--today)}
 .day .heartbg{position:absolute;inset:0;width:42px;height:42px}
 .day .heartbg path{fill:var(--anniv)}
@@ -220,7 +222,11 @@ const PHASES = {
   small: { img: "img/phase-small.jpg", pos: "50% 15%", title: "아주 작은 쥐",
            desc: `${T.periodOn}. 몸도 마음도 아주 약해지는 단계예요.`, },
   calm:  { img: "img/phase-calm.jpg",  title: "평온한 쥐",
-           desc: "아주 평온한 단계예요.", }
+           desc: "아주 평온한 단계예요.", },
+  what:  { img: "img/phase-what.jpg", pos: "50% 35%", title: "머하는 쥐",
+           desc: `${T.periodDay}이 지났는데 아직 시작하지 않은 단계예요.`, }, // 문구 임시
+  lewd:  { img: "img/phase-lewd.jpg", pos: "35% 50%", title: "야릇한 쥐",
+           desc: ph => `${T.periodDay} ${ph.d}일 전. 쥐꿀렁대소동을 일으키는 단계예요.`, } // 꿀렁 기간. 며칠 전 = 예측 예정일 기준
 };
 
 /* ---------- 설정값 ----------
@@ -354,15 +360,18 @@ function makeEngine(logs, now = today()) {
   const len = Math.max(1, Math.min(10, Math.round((MODEL.periodLen * 2 + sum(done)) / (2 + done.length))));
   // 시작일만 기록한 달은 위 기간만큼 생리로 채워서 보여줌 (저장된 기록은 그대로)
   const inferred = new Set();
-  runs.forEach(r => { if (diffDays(r.start, r.end) === 0) for (let j = 1; j < len; j++) inferred.add(keyOf(addDays(r.start, j))); });
-  runs.forEach(r => { if (diffDays(r.start, r.end) === 0) r.end = addDays(r.start, len - 1); });
+  // 시작일만 기록한 달 + 지금 진행 중인 쥐구멍(어제나 오늘까지 기록, 평소 기간보다 짧음) → 평소 기간만큼 채워서 봄
+  const lastRun = runs[runs.length - 1];
+  const fill = r => diffDays(r.start, r.end) === 0 || (r === lastRun && diffDays(r.end, now) <= 1 && diffDays(r.start, r.end) + 1 < len);
+  runs.forEach(r => { if (!fill(r)) return; for (let j = 1; j < len; j++) { const d = addDays(r.start, j); if (d > r.end) inferred.add(keyOf(d)); } r.end = addDays(r.start, len - 1); });
 
+  let due = null; // 원래 예정일 (늦어져도 그대로)
   const plan = new Set(), maybe = new Set(), fertile = new Set(), ovul = new Set(), starts = [], mids = [];
   const lut = Math.round(MODEL.luteal);
   runs.slice(1).forEach((r, i) => { const g = diffDays(runs[i].start, r.start); if (g >= 15 && g <= 60) mids.push(addDays(r.start, -lut)); });
   if (runs.length) {
     const last = runs[runs.length - 1];
-    const first = addDays(last.start, Math.round(mu));
+    const first = addDays(last.start, Math.round(mu)); due = first;
     const late = first < now && now > last.end ? diffDays(first, now) : 0; // 예정일이 지났으면 오늘부터로 밀기
     // 다음 쥐구멍 1번만 예측 (그 뒤는 실제 시작을 기록하면 그때 계산)
     for (let k = 1; k <= 1; k++) {
@@ -377,7 +386,7 @@ function makeEngine(logs, now = today()) {
   plan.forEach(k => maybe.delete(k));
   mids.sort((a, b) => a - b);
   mids.forEach(o => { ovul.add(keyOf(o)); for (let j = -5; j <= 1; j++) fertile.add(keyOf(addDays(o, j))); });
-  return { runs, mu, sd, len, inferred, plan, maybe, fertile, ovul, starts, mids };
+  return { runs, mu, sd, len, inferred, plan, maybe, fertile, ovul, starts, mids, due };
 }
 
 /* ---------- 실시간 공유 (Firebase) ----------
@@ -800,10 +809,11 @@ function phaseOf(e, logs, date = today()) {
   const next = e.starts.find(x => x >= date), d = next ? diffDays(date, next) : null;
   const last = e.runs[e.runs.length - 1], expected = addDays(last.start, Math.round(e.mu));
   const late = diffDays(expected, date);
-  if (late > 0 && date > last.end) return { key: "blue", when: `${T.periodDay}이 ${late}일 지났어요` };
+  if (late > 0 && date > last.end) return { key: "what", when: `${T.periodDay}이 ${late}일 지났어요` };
   if (d === 0) return { key: "blue", when: `오늘이 ${T.periodDay}이에요` };
   if (d >= 1 && d <= 3) return { key: "blue", when: `${T.periodDay} ${d}일 전` };
   if (d >= 4 && d <= 7) return { key: "rage", when: `${T.periodDay} ${d}일 전` };
+  if (e.fertile.has(k) && d !== null) return { key: "lewd", d, when: `${T.fertile}` };
   return { key: "calm", when: d ? `다음 ${T.period}까지 ${d}일` : "" };
 }
 // 사진 크기: 화면 높이 − (6주짜리 달력 끝 위치) − 아래 홈 바 자리. 달을 넘겨도 크기가 안 바뀌게 항상 6주 기준
@@ -825,7 +835,7 @@ function phaseCard(e, logs) {
   const ph = phaseOf(e, logs), P = PHASES[ph.key];
   return `<div class="phase"><img src="${P.img}" alt="${esc(P.title)}"${P.pos ? ` style="object-position:${P.pos}"` : ""}>
     <div class="txt"><h2>${esc(P.title)}</h2>
-    <p class="desc">${esc(P.desc)}</p></div></div>`;
+    <p class="desc">${esc(typeof P.desc === "function" ? P.desc(ph) : P.desc)}</p></div></div>`;
 }
 
 function monthCells(m, e, logs, show, editable) {
@@ -839,6 +849,7 @@ function monthCells(m, e, logs, show, editable) {
     if (isHoliday(date)) c.push("hol");
     if (diffDays(date, t) === 0) c.push("today");
     if (anniv) c.push("anniv");
+    if (show.plan && e.due && diffDays(date, e.due) === 0 && !isRed(l) && !e.inferred.has(k)) c.push("due"); // 예정일 네모
     const bars = [];
     if (show.period && (isRed(l) || e.inferred.has(k))) bars.push("period");
     else if (show.plan && e.plan.has(k)) bars.push("plan");
@@ -1174,7 +1185,8 @@ watchPartner();
 navigator.storage?.persist?.().catch(() => {});
 { const hadSW = !!navigator.serviceWorker?.controller, t0 = Date.now();
   navigator.serviceWorker?.addEventListener("controllerchange", () => { if (hadSW && Date.now() - t0 < 4000 && !$("day").open) location.reload(); }); }
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+// 내 컴퓨터(localhost)에서 볼 때는 서비스워커를 안 씀 → 고친 내용이 바로 보임
+if ("serviceWorker" in navigator && location.protocol.startsWith("http") && location.hostname !== "localhost") navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 </script>
 </body>
 </html>
