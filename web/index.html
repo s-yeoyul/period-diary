@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="캘린더">
@@ -89,7 +89,11 @@ html.fonts-wait #loading{display:flex;flex-direction:column;gap:12px;position:fi
   color-scheme:light;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
+/* 앱처럼: 고무줄 스크롤·확대·글자 선택·길게 누르기 메뉴 끄기 */
+body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+img{-webkit-user-drag:none;-webkit-touch-callout:none}
+input.field{-webkit-user-select:text;user-select:text}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'WatermelonYang',-apple-system,system-ui,sans-serif;font-size:16px;line-height:1.5;
   padding:calc(env(safe-area-inset-top) + 24px) 16px calc(env(safe-area-inset-bottom) + 40px)}
 .wrap{max-width:440px;margin:0 auto}
@@ -1104,6 +1108,9 @@ document.addEventListener("touchmove", e => {
   const t = e.touches[0], dx = t.clientX - d.x, dy = t.clientY - d.y;
   if (d.lock === "x" || (!d.lock && Math.abs(dx) > 3 && Math.abs(dx) > Math.abs(dy) * 1.3)) e.preventDefault();
 }, { passive: false });
+// 두 손가락 확대 막기 (iOS는 user-scalable=no를 무시할 때가 있음)
+["gesturestart", "gesturechange"].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener("touchmove", e => { if (e.touches.length > 1 && e.cancelable) e.preventDefault(); }, { passive: false });
 function endDrag(e) {
   const d = pager.drag; if (!d || (e && e.pointerId !== d.id)) return;
   pager.drag = null;
